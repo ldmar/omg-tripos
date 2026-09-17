@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sin conexión · Ruta</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #fbf8f3;
+    color: #15161a;
+    padding: 24px;
+    text-align: center;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0f1115; color: #f2f3f5; }
+  }
+  .card {
+    max-width: 360px;
+    padding: 32px 24px;
+    border-radius: 24px;
+    background: rgba(255,255,255,.6);
+    border: 1px solid rgba(0,0,0,.06);
+    backdrop-filter: blur(20px);
+  }
+  @media (prefers-color-scheme: dark) {
+    .card { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+  }
+  .emoji { font-size: 56px; margin-bottom: 12px; }
+  h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.01em; }
+  p  { margin: 0 0 20px; color: #6b6e75; font-size: 14px; line-height: 1.5; }
+  button {
+    border: none;
+    background: #15161a;
+    color: #fbf8f3;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji">📡</div>
+    <h1>Sin conexión</h1>
+    <p>Tu itinerario y documentos siguen guardados en el dispositivo. Cuando vuelvas a estar en línea, retomamos.</p>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "name": "OhMyGoch Trip OS",
+  "short_name": "Trip OS",
+  "description": "Pegá el email. Viajá offline. Replanificá en segundos.",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf8f3",
+  "theme_color": "#fbf8f3",
+  "categories": ["travel", "productivity", "lifestyle"],
+  "lang": "es-AR",
+  "dir": "ltr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Importar reserva",
+      "short_name": "Importar",
+      "description": "Pegá un email de Booking, Airbnb o vuelo",
+      "url": "./?action=import",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ver hoy",
+      "short_name": "Hoy",
+      "description": "Ir al itinerario de hoy",
+      "url": "./?action=today",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "share_target": {
+    "action": "./?action=share-target",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OhMyGoch · Generador de iconos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f1115;
+    color: #f2f3f5;
+    margin: 0;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.02em; }
+  p.lead { color: #8a8d94; margin: 0 0 32px; font-size: 14px; }
+  code { background: #262a33; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: #181b21;
+    border: 1px solid #262a33;
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+  }
+  .card img {
+    width: 96px;
+    height: 96px;
+    display: block;
+    margin: 0 auto 12px;
+    border-radius: 16px;
+    background: #262a33;
+    object-fit: contain;
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: ui-monospace, monospace;
+    word-break: break-all;
+  }
+  .card p {
+    margin: 0 0 12px;
+    font-size: 11px;
+    color: #8a8d94;
+  }
+  .card a {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #262a33;
+    color: #f2f3f5;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .card a:hover { background: #3a4150; }
+  .actions {
+    text-align: center;
+    padding: 24px;
+    background: #181b21;
+    border-radius: 16px;
+    border: 1px solid #262a33;
+  }
+  button.primary {
+    background: linear-gradient(135deg, #ff5c39, #ff8a5b);
+    color: #fff;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(255,92,57,.35);
+    transition: transform .15s ease;
+  }
+  button.primary:hover { transform: scale(1.02); }
+  button.primary:active { transform: scale(.98); }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+  .hint {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #8a8d94;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎨 OhMyGoch · Generador de iconos PWA</h1>
+  <p class="lead">Genera todos los PNG necesarios desde los SVG fuente. Guardá el ZIP descomprimido en la carpeta <code>icons/</code>.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="actions">
+    <button class="primary" id="downloadAll">⬇ Descargar todos (.zip)</button>
+    <p class="hint">También podés descargar cada uno individualmente desde las tarjetas de arriba.</p>
+  </div>
+</div>
+
+<script>
+/* ---------- SVG fuente (inline para evitar CORS) ---------- */
+const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgOMG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="textOMG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E0E7FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgOMG)"/>
+  <path d="M 72 400 Q 140 340 180 300 Q 220 260 256 240"
+        fill="none" stroke="#FFD166" stroke-width="6"
+        stroke-linecap="round" stroke-dasharray="2 16" opacity="0.8"/>
+  <text x="256" y="320"
+        font-family="'Space Grotesk', 'Inter', system-ui, sans-serif"
+        font-size="170" font-weight="700"
+        fill="url(#textOMG)" text-anchor="middle"
+        letter-spacing="-8">OMG</text>
+  <path d="M 420 130
+           C 405 130 393 142 393 157
+           C 393 178 420 204 420 204
+           C 420 204 447 178 447 157
+           C 447 142 435 130 420 130 Z"
+        fill="#FFD166"/>
+  <circle cx="420" cy="157" r="9" fill="#2563EB"/>
+</svg>`;
+
+const MASKABLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#F8FAFC"/>
+  <path d="M 160 240
+           A 96 96 0 0 1 352 240
+           L 352 400
+           Q 336 384 320 400
+           Q 304 416 288 400
+           Q 272 384 256 400
+           Q 240 416 224 400
+           Q 208 384 192 400
+           Q 176 416 160 400
+           Z"
+        fill="#FF6B35"/>
+  <circle cx="220" cy="220" r="18" fill="#1A1A1A"/>
+  <circle cx="292" cy="220" r="18" fill="#1A1A1A"/>
+  <path d="M 256 270
+           C 236 270 220 286 220 306
+           C 220 336 256 368 256 368
+           C 256 368 292 336 292 306
+           C 292 286 276 270 256 270 Z"
+        fill="#FFD166"/>
+  <circle cx="256" cy="306" r="12" fill="#1A1A1A"/>
+</svg>`;
+
+/* ---------- Iconos a generar ---------- */
+const ICONS = [
+  { file: 'icon-192.png',         svg: ICON_SVG,     size: 192, desc: 'PWA · any' },
+  { file: 'icon-512.png',         svg: ICON_SVG,     size: 512, desc: 'PWA · any' },
+  { file: 'maskable-512.png',     svg: MASKABLE_SVG, size: 512, desc: 'PWA · maskable' },
+  { file: 'apple-touch-icon.png', svg: ICON_SVG,     size: 180, desc: 'iOS / iPadOS' },
+  { file: 'favicon-32.png',       svg: ICON_SVG,     size: 32,  desc: 'Favicon navegador' },
+  { file: 'favicon-16.png',       svg: ICON_SVG,     size: 16,  desc: 'Favicon navegador' },
+];
+
+/* ---------- SVG → PNG ---------- */
+function svgToPng(svgString, size) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob falló')), 'image/png');
+    };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+
+/* ---------- Render individual ---------- */
+async function render() {
+  const grid = document.getElementById('grid');
+  for (const icon of ICONS) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img alt="${icon.file}" />
+      <h3>${icon.file}</h3>
+      <p>${icon.size}×${icon.size} · ${icon.desc}</p>
+      <a download="${icon.file}">Descargar</a>
+    `;
+    grid.appendChild(card);
+    try {
+      const blob = await svgToPng(icon.svg, icon.size);
+      const url = URL.createObjectURL(blob);
+      card.querySelector('img').src = url;
+      card.querySelector('a').href = url;
+    } catch (e) {
+      card.querySelector('img').alt = '⚠';
+      console.error(icon.file, e);
+    }
+  }
+}
+
+/* ---------- Descargar ZIP ---------- */
+document.getElementById('downloadAll').addEventListener('click', async () => {
+  const btn = document.getElementById('downloadAll');
+  btn.disabled = true;
+  btn.textContent = 'Generando…';
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder('icons');
+    for (const icon of ICONS) {
+      const blob = await svgToPng(icon.svg, icon.size);
+      folder.file(icon.file, blob);
+    }
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ohmygoch-icons.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    btn.textContent = '✓ Descargado';
+    setTimeout(() => {
+      btn.textContent = '⬇ Descargar todos (.zip)';
+      btn.disabled = false;
+    }, 2200);
+  } catch (e) {
+    alert('Error: ' + e.message);
+    btn.textContent = '⬇ Descargar todos (.zip)';
+    btn.disabled = false;
+  }
+});
+
+render();
+</script>
+</body>
+</html>

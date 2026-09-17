@@ -1,0 +1,1094 @@
+/* ============================================================
+   OhMyGoch Trip OS · app.js
+   ============================================================ */
+
+import { analyze, analyzeMulti, PROVIDERS, EXAMPLES } from './parser.js';
+import { extractTextFromPdf, isPdfFile, fmtBytes } from './pdf-import.js';
+
+/* ============================================================
+   CONSTANTES
+   ============================================================ */
+const DB_NAME = 'ohmygoch';
+const DB_VERSION = 1;
+const STORE_EVENTS = 'events';
+const STORE_META = 'meta';
+const TRIP_KEY = 'trip';
+
+const TYPE_META = {
+  flight:    { icon: '✈', label: 'Vuelo',       color: '#3b82f6' },
+  transport: { icon: '🚇', label: 'Transporte', color: '#06b6d4' },
+  hotel:     { icon: '🏨', label: 'Hotel',      color: '#8b5cf6' },
+  airbnb:    { icon: '🏠', label: 'Airbnb',     color: '#ec4899' },
+  food:      { icon: '🍽', label: 'Comida',     color: '#f97316' },
+  activity:  { icon: '🎨', label: 'Actividad',  color: '#10b981' },
+  note:      { icon: '📝', label: 'Nota',       color: '#6b7280' },
+};
+
+const TRIP = {
+  id: 'madrid-2026',
+  title: 'Escapada a Madrid',
+  flag: '🇪🇸',
+  days: 5,
+  travelers: 4,
+};
+
+/* ============================================================
+   INDEXEDDB
+   ============================================================ */
+let _db;
+function db() {
+  if (_db) return _db;
+  _db = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const idb = req.result;
+      if (!idb.objectStoreNames.contains(STORE_EVENTS)) {
+        const store = idb.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
+        store.createIndex('startAt', 'startAt');
+      }
+      if (!idb.objectStoreNames.contains(STORE_META)) {
+        idb.createObjectStore(STORE_META, { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _db;
+}
+
+function tx(store, mode, fn) {
+  return db().then(idb => new Promise((resolve, reject) => {
+    const t = idb.transaction(store, mode);
+    const s = t.objectStore(store);
+    const result = fn(s);
+    t.oncomplete = () => resolve(result?.result ?? result);
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
+  }));
+}
+
+const idbAll    = (store)      => tx(store, 'readonly',  s => s.getAll());
+const idbGet    = (store, key) => tx(store, 'readonly',  s => s.get(key));
+const idbPut    = (store, val) => tx(store, 'readwrite', s => s.put(val));
+const idbDelete = (store, key) => tx(store, 'readwrite', s => s.delete(key));
+const idbClear  = (store)      => tx(store, 'readwrite', s => s.clear());
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function uid() {
+  return 'e_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function escapeHtml(s = '') {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* ---------- Duplicados ---------- */
+function normalize(s = '') {
+  return String(s).toLowerCase().trim().replace(/[^a-z0-9áéíóúñ]/gi, '');
+}
+
+function sameDay(a, b) {
+  if (!a || !b) return false;
+  const da = new Date(a), db = new Date(b);
+  return da.getFullYear() === db.getFullYear() &&
+         da.getMonth() === db.getMonth() &&
+         da.getDate() === db.getDate();
+}
+
+/**
+ * Devuelve el evento existente que coincide, o null.
+ * Criterios (en orden):
+ *   1. Mismo confirmation_code (identidad fuerte)
+ *   2. Mismo tipo + título normalizado + mismo día
+ */
+function findDuplicate(candidate, existingList) {
+  if (!existingList || !existingList.length) return null;
+  for (const ev of existingList) {
+    if (candidate.confirmation_code && ev.confirmation_code &&
+        candidate.confirmation_code === ev.confirmation_code) {
+      return ev;
+    }
+    if (candidate.type === ev.type &&
+        normalize(candidate.title) === normalize(ev.title) &&
+        sameDay(candidate.startAt, ev.startAt)) {
+      return ev;
+    }
+  }
+  return null;
+}
+
+/* ============================================================
+   SEED
+   ============================================================ */
+function seedEvents() {
+  const now = new Date();
+  const at = (h, m = 0) => {
+    const d = new Date(now);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+  const base = [
+    { type: 'flight',    title: 'Vuelo BCN → MAD',         place: 'Aeropuerto El Prat T1',      notes: 'Vueling VY1234 · Puerta B12', startAt: at(9, 0),  done: true },
+    { type: 'transport', title: 'Metro a Sol',             place: 'Estación Nuevos Ministerios', notes: 'Línea 8 + Cercanías',         startAt: at(11, 30), done: true },
+    { type: 'food',      title: 'Comida en San Miguel',    place: 'Plaza San Miguel',           notes: 'Reserva confirmada · 4 pax',  startAt: at(12, 30), done: false },
+    { type: 'hotel',     title: 'Check-in Hotel Gran Vía', place: 'Gran Vía 1',                 notes: 'Ref. BK-8827341 · Doble x2',  startAt: at(15, 0),  done: false },
+    { type: 'activity',  title: 'Museo del Prado',         place: 'Calle de Ruiz de Alarcón',   notes: 'Entradas 4 · gratis 18h-20h', startAt: at(17, 30), done: false },
+    { type: 'food',      title: 'Cena en La Latina',       place: 'Calle Cava Baja',            notes: 'Sugerencia: Casa Lucio',      startAt: at(20, 30), done: false },
+    { type: 'activity',  title: 'Tablao Flamenco',         place: 'Corral de la Morería',       notes: 'Reserva Lucas · 4 entradas',  startAt: at(22, 30), done: false },
+  ];
+  return base.map(e => ({ id: uid(), ...e }));
+}
+
+async function ensureSeed() {
+  const trip = await idbGet(STORE_META, TRIP_KEY);
+  if (!trip) await idbPut(STORE_META, { key: TRIP_KEY, ...TRIP });
+
+  const events = await idbAll(STORE_EVENTS);
+  if (!events.length) {
+    for (const e of seedEvents()) await idbPut(STORE_EVENTS, e);
+  }
+}
+
+/* ============================================================
+   ESTADO
+   ============================================================ */
+let events = [];
+let trip = { ...TRIP };
+
+async function loadAll() {
+  trip = (await idbGet(STORE_META, TRIP_KEY)) || { ...TRIP };
+  events = (await idbAll(STORE_EVENTS)).sort(
+    (a, b) => new Date(a.startAt) - new Date(b.startAt)
+  );
+}
+
+/* ============================================================
+   FORMATO
+   ============================================================ */
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function relTime(iso) {
+  const diff = new Date(iso).getTime() - Date.now();
+  const mins = Math.round(diff / 60000);
+  if (Math.abs(mins) < 1) return 'ahora';
+  if (Math.abs(mins) < 60) return mins > 0 ? `en ${mins} min` : `hace ${-mins} min`;
+  const h = Math.round(mins / 60);
+  if (Math.abs(h) < 24) return h > 0 ? `en ${h} h` : `hace ${-h} h`;
+  const d = Math.round(h / 24);
+  return d > 0 ? `en ${d} d` : `hace ${-d} d`;
+}
+
+function isToday(iso) {
+  const d = new Date(iso), n = new Date();
+  return d.getFullYear() === n.getFullYear() &&
+         d.getMonth() === n.getMonth() &&
+         d.getDate() === n.getDate();
+}
+
+function computeNext() {
+  const now = Date.now();
+  return events
+    .filter(e => !e.done && new Date(e.startAt).getTime() > now - 5 * 60 * 1000)
+    .sort((a, b) => new Date(a.startAt) - new Date(b.startAt))[0];
+}
+
+function toLocalInput(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromLocalInput(val) {
+  return new Date(val).toISOString();
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderTrip() {
+  document.getElementById('tripTitle').textContent = trip.title;
+  // El flag ahora es un SVG; no lo sobreescribimos.
+  // document.getElementById('tripFlag').textContent = trip.flag;
+
+  const today = events.filter(e => isToday(e.startAt));
+  const done = today.filter(e => e.done).length;
+  const pct = today.length ? Math.round((done / today.length) * 100) : 0;
+  document.getElementById('heroProgress').style.width = pct + '%';
+
+  const opts = { day: 'numeric', month: 'short' };
+  document.getElementById('heroDate').textContent =
+    new Date().toLocaleDateString('es-AR', opts);
+}
+
+function renderNext() {
+  const n = computeNext();
+  const card = document.getElementById('nextCard');
+  if (!n) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  document.getElementById('nextTitle').textContent = n.title;
+  document.getElementById('nextTime').textContent = `${fmtTime(n.startAt)} · ${relTime(n.startAt)}`;
+  document.getElementById('nextPlace').textContent = n.place || 'Sin ubicación';
+  document.getElementById('nextCta').onclick = () => openModal(n.id);
+}
+
+function renderTimeline() {
+  const ol = document.getElementById('timeline');
+  const empty = document.getElementById('emptyState');
+
+  if (!events.length) {
+    ol.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+
+  const now = Date.now();
+  ol.innerHTML = events.map(e => {
+    const meta = TYPE_META[e.type] || TYPE_META.note;
+    const t = new Date(e.startAt).getTime();
+    const isLive = !e.done && t <= now && now - t < 60 * 60 * 1000;
+    const isNext = !e.done && t > now;
+    const status = e.done ? 'done' : (isLive ? 'next' : (isNext ? 'next' : 'upcoming'));
+
+    return `
+      <li class="tl tl--${e.type} tl--${status}" data-id="${e.id}">
+        <div class="tl__rail">
+          <span class="tl__dot" data-toggle="${e.id}" title="${e.done ? 'Marcar como pendiente' : 'Marcar como hecho'}">
+            ${e.done ? '<svg><use href="#i-check"/></svg>' : ''}
+          </span>
+        </div>
+        <div class="tl__time">${fmtTime(e.startAt)}</div>
+        <div class="tl__card" data-edit="${e.id}">
+          <div class="tl__ico">${meta.icon}</div>
+          <div class="tl__body">
+            <h4>${escapeHtml(e.title)}${isLive ? '<span class="pill pill--live">Ahora</span>' : ''}${e.done ? '<span class="pill pill--done">Hecho</span>' : ''}</h4>
+            ${e.notes ? `<p>${escapeHtml(e.notes)}</p>` : ''}
+            ${e.place ? `<p class="tl__place"><svg><use href="#i-pin"/></svg>${escapeHtml(e.place)}</p>` : ''}
+          </div>
+        </div>
+      </li>
+    `;
+  }).join('');
+
+  ol.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', ev => {
+      ev.stopPropagation();
+      toggleDone(el.dataset.toggle);
+    });
+  });
+  ol.querySelectorAll('[data-edit]').forEach(el => {
+    el.addEventListener('click', () => openModal(el.dataset.edit));
+  });
+}
+
+async function renderAll() {
+  await loadAll();
+  renderTrip();
+  renderNext();
+  renderTimeline();
+}
+
+/* ============================================================
+   ACCIONES
+   ============================================================ */
+async function toggleDone(id) {
+  const e = events.find(x => x.id === id);
+  if (!e) return;
+  e.done = !e.done;
+  await idbPut(STORE_EVENTS, e);
+  await renderAll();
+  toast(e.done ? '✓ Marcado como hecho' : 'Marcado como pendiente');
+}
+
+async function saveEvent(ev) {
+  await idbPut(STORE_EVENTS, ev);
+  await renderAll();
+}
+
+async function deleteEvent(id) {
+  await idbDelete(STORE_EVENTS, id);
+  await renderAll();
+  toast('Evento eliminado');
+}
+
+async function clearDone() {
+  const done = events.filter(e => e.done);
+  if (!done.length) { toast('No hay eventos hechos'); return; }
+  if (!confirm(`¿Eliminar ${done.length} evento(s) ya realizados?`)) return;
+  for (const e of done) await idbDelete(STORE_EVENTS, e.id);
+  await renderAll();
+  toast('Eventos limpiados');
+}
+
+/* ============================================================
+   MODAL · EVENTO
+   ============================================================ */
+const modal = document.getElementById('modal');
+const form = document.getElementById('eventForm');
+const typeChips = document.getElementById('typeChips');
+let currentType = 'activity';
+
+function buildChips() {
+  typeChips.innerHTML = Object.entries(TYPE_META).map(([key, m]) => `
+    <button type="button" class="chip" data-type="${key}" style="--chip-c:${m.color}">
+      <span>${m.icon}</span><span>${m.label}</span>
+    </button>
+  `).join('');
+  typeChips.addEventListener('click', ev => {
+    const btn = ev.target.closest('.chip');
+    if (!btn) return;
+    currentType = btn.dataset.type;
+    typeChips.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('is-active', c.dataset.type === currentType);
+    });
+  });
+}
+
+function setChipActive() {
+  typeChips.querySelectorAll('.chip').forEach(c => {
+    c.classList.toggle('is-active', c.dataset.type === currentType);
+  });
+}
+
+function openModal(id) {
+  const isEdit = !!id;
+  const e = isEdit ? events.find(x => x.id === id) : null;
+
+  document.getElementById('modalTitle').textContent = isEdit ? 'Editar evento' : 'Nuevo evento';
+  document.getElementById('fId').value = e?.id || '';
+  document.getElementById('fTitle').value = e?.title || '';
+  document.getElementById('fStart').value = e
+    ? toLocalInput(e.startAt)
+    : toLocalInput(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+  document.getElementById('fPlace').value = e?.place || '';
+  document.getElementById('fNotes').value = e?.notes || '';
+  document.getElementById('deleteBtn').hidden = !isEdit;
+  document.getElementById('saveBtn').textContent = isEdit ? 'Guardar' : 'Crear evento';
+
+  currentType = e?.type || 'activity';
+  setChipActive();
+
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => document.getElementById('fTitle').focus(), 150);
+}
+
+function closeModal() {
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  form.reset();
+}
+
+modal.addEventListener('click', ev => {
+  if (ev.target.hasAttribute('data-close') || ev.target.closest('[data-close]')) closeModal();
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && !modal.hidden) closeModal();
+});
+
+form.addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const id = document.getElementById('fId').value || uid();
+  const exists = events.find(x => x.id === id);
+  const payload = {
+    id,
+    type: currentType,
+    title: document.getElementById('fTitle').value.trim(),
+    startAt: fromLocalInput(document.getElementById('fStart').value),
+    place: document.getElementById('fPlace').value.trim(),
+    notes: document.getElementById('fNotes').value.trim(),
+    done: exists?.done || false,
+  };
+  await saveEvent(payload);
+  closeModal();
+  toast(exists ? 'Evento actualizado' : 'Evento creado');
+});
+
+document.getElementById('deleteBtn').addEventListener('click', async () => {
+  const id = document.getElementById('fId').value;
+  if (!id || !confirm('¿Eliminar este evento?')) return;
+  await deleteEvent(id);
+  closeModal();
+});
+
+/* ============================================================
+   TABS
+   ============================================================ */
+function setView(name) {
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('is-active', v.dataset.view === name);
+  });
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('is-active', t.dataset.tab === name);
+  });
+  document.getElementById('viewport').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => setView(t.dataset.tab));
+});
+
+/* ============================================================
+   MAPA
+   ============================================================ */
+document.querySelectorAll('.pin').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.pin').forEach(x => x.classList.remove('is-selected'));
+    p.classList.add('is-selected');
+    document.getElementById('sheetIcon').textContent = p.textContent.trim();
+    document.getElementById('sheetTitle').textContent = p.dataset.label;
+    document.getElementById('sheetMeta').textContent = 'Seleccionado · cerca de ti';
+  });
+});
+
+/* ============================================================
+   FAB + acciones
+   ============================================================ */
+document.getElementById('fab').addEventListener('click', () => openModal());
+document.getElementById('clearDoneBtn').addEventListener('click', clearDone);
+document.getElementById('bellBtn').addEventListener('click', () => {
+  const b = document.getElementById('bellBtn');
+  b.classList.add('is-pinged');
+  setTimeout(() => b.classList.remove('is-pinged'), 600);
+  toast('Sin notificaciones nuevas');
+});
+
+/* ============================================================
+   RESET DEMO
+   ============================================================ */
+(() => {
+  const flag = document.getElementById('tripFlag');
+  let timer;
+  const start = () => {
+    timer = setTimeout(async () => {
+      if (!confirm('¿Reiniciar el demo? Se borrarán los eventos actuales.')) return;
+      await idbClear(STORE_EVENTS);
+      await idbClear(STORE_META);
+      await ensureSeed();
+      await renderAll();
+      toast('Demo reiniciado');
+    }, 800);
+  };
+  const cancel = () => clearTimeout(timer);
+  flag.addEventListener('pointerdown', start);
+  flag.addEventListener('pointerup', cancel);
+  flag.addEventListener('pointercancel', cancel);
+  flag.addEventListener('pointerleave', cancel);
+})();
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  requestAnimationFrame(() => t.classList.add('is-visible'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('is-visible');
+    setTimeout(() => { t.hidden = true; }, 250);
+  }, 2200);
+}
+
+/* ============================================================
+   IMPORT MÁGICO
+   ============================================================ */
+const importModal = document.getElementById('importModal');
+const importInput = document.getElementById('importInput');
+const importPreview = document.getElementById('importPreview');
+const importText = document.getElementById('importText');
+const providerChips = document.getElementById('providerChips');
+const analyzeBtn = document.getElementById('importAnalyzeBtn');
+
+let importProvider = 'auto';
+let importResult = null;
+let importSelected = new Set();
+let importDupDecisions = new Map();   // idx → 'skip' | 'replace' | 'duplicate'
+
+function buildProviderChips() {
+  providerChips.innerHTML = Object.values(PROVIDERS).map(p => `
+    <button type="button" class="chip" data-provider="${p.id}">
+      <span>${p.emoji}</span><span>${p.name}</span>
+    </button>
+  `).join('');
+  providerChips.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('.chip');
+    if (!btn) return;
+    importProvider = btn.dataset.provider;
+    providerChips.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('is-active', c.dataset.provider === importProvider);
+    });
+  });
+  providerChips.querySelector('[data-provider="auto"]').classList.add('is-active');
+}
+
+function openImport(prefill = '') {
+  resetImport();
+  if (prefill) {
+    importText.value = prefill;
+    updateAnalyzeState();
+  }
+  importModal.hidden = false;
+  importModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => importText.focus(), 200);
+}
+
+function closeImport() {
+  importModal.hidden = true;
+  importModal.setAttribute('aria-hidden', 'true');
+}
+
+function resetImport() {
+  importText.value = '';
+  importProvider = 'auto';
+  providerChips.querySelectorAll('.chip').forEach(c => {
+    c.classList.toggle('is-active', c.dataset.provider === 'auto');
+  });
+  importResult = null;
+  importSelected.clear();
+  importInput.hidden = false;
+  importPreview.hidden = true;
+  updateAnalyzeState();
+}
+
+function updateAnalyzeState() {
+  analyzeBtn.disabled = importText.value.trim().length < 20;
+}
+importText.addEventListener('input', updateAnalyzeState);
+
+document.getElementById('importExampleBtn').addEventListener('click', () => {
+  const examples = Object.values(EXAMPLES);
+  const current = importText.value.trim();
+  const next = examples.find(e => e !== current) || examples[0];
+  importText.value = next;
+  importProvider = 'auto';
+  providerChips.querySelectorAll('.chip').forEach(c => {
+    c.classList.toggle('is-active', c.dataset.provider === 'auto');
+  });
+  updateAnalyzeState();
+});
+
+document.getElementById('importClearBtn').addEventListener('click', () => {
+  importText.value = '';
+  updateAnalyzeState();
+});
+
+analyzeBtn.addEventListener('click', () => {
+  const text = importText.value;
+  const result = analyzeMulti(text, importProvider);
+  importResult = result;
+  importSelected = new Set(result.events.map((_, i) => i));
+  importDupDecisions.clear();     // ← resetear decisiones de duplicados
+  renderImportPreview(result);
+  importInput.hidden = true;
+  importPreview.hidden = false;
+});
+
+document.getElementById('importBackBtn').addEventListener('click', () => {
+  importPreview.hidden = true;
+  importInput.hidden = false;
+});
+
+document.getElementById('importConfirmBtn').addEventListener('click', async () => {
+  if (!importResult) return;
+
+  const selected = importResult.events
+    .map((ev, i) => ({ ev, i }))
+    .filter(({ i }) => importSelected.has(i));
+
+  if (!selected.length) { toast('No hay eventos seleccionados'); return; }
+
+  let added = 0, replaced = 0, skipped = 0;
+
+  for (const { ev, i } of selected) {
+    const dup = findDuplicate(ev, events);
+    const decision = importDupDecisions.get(i);
+
+    if (dup) {
+      if (decision === 'skip') {
+        skipped++;
+        continue;
+      }
+      if (decision === 'replace') {
+        await idbDelete(STORE_EVENTS, dup.id);
+        replaced++;
+      } else if (!decision) {
+        // Sin decisión → default es duplicar (más seguro: no pierde datos)
+        // Pero avisamos que quedó duplicado
+      }
+    }
+
+    await saveEvent({
+      id: uid(),
+      type: ev.type,
+      title: ev.title,
+      startAt: ev.startAt || new Date().toISOString(),
+      endAt: ev.endAt || null,
+      place: ev.place || '',
+      notes: ev.notes || '',
+      confirmation_code: ev.confirmation_code || null,
+      cost: ev.cost || null,
+      currency: ev.currency || null,
+      done: false,
+    });
+    added++;
+  }
+
+  closeImport();
+  setView('today');
+
+  const parts = [];
+  if (added) parts.push(`${added} agregado${added > 1 ? 's' : ''}`);
+  if (replaced) parts.push(`${replaced} reemplazado${replaced > 1 ? 's' : ''}`);
+  if (skipped) parts.push(`${skipped} salteado${skipped > 1 ? 's' : ''}`);
+  toast(`✓ ${parts.join(' · ')}`);
+});
+
+/* ---------- Render del preview ---------- */
+function renderImportPreview(result) {
+  const badge = document.getElementById('importProvider');
+  const summary = document.getElementById('importSummary');
+  const eventsEl = document.getElementById('importEvents');
+  const warningsEl = document.getElementById('importWarnings');
+  const warningsList = document.getElementById('importWarningsList');
+
+  badge.textContent = result.providerName || 'Reserva';
+
+  // Contar duplicados
+  const dupCount = result.events.filter((ev, i) => {
+    if (!importSelected.has(i)) return false;
+    return findDuplicate(ev, events);
+  }).length;
+
+  if (result.events.length === 1) {
+    summary.textContent = 'Se detectó 1 evento · tocá para editar';
+  } else {
+    summary.textContent = `Se detectaron ${result.events.length} eventos · tocá para editar`;
+  }
+  if (dupCount > 0) {
+    summary.textContent += ` · ⚠ ${dupCount} duplicado${dupCount > 1 ? 's' : ''}`;
+  }
+
+  if (!result.events.length) {
+    eventsEl.innerHTML = `
+      <div class="empty" style="margin:0">
+        <div class="empty__icon">🤔</div>
+        <h4>No pude extraer nada</h4>
+        <p>Probá pegando el email completo, o elegí el proveedor manualmente arriba.</p>
+      </div>
+    `;
+  } else {
+    eventsEl.innerHTML = result.events.map((ev, i) => {
+      const meta = TYPE_META[ev.type] || TYPE_META.note;
+      const conf = ev.confidence >= 0.75 ? 'high' : ev.confidence >= 0.5 ? 'mid' : 'low';
+      const confLabel = conf === 'high' ? 'Alta' : conf === 'mid' ? 'Media' : 'Baja';
+      const when = ev.startAt
+        ? new Date(ev.startAt).toLocaleString('es-AR', {
+            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+          })
+        : '—';
+      const isSelected = importSelected.has(i);
+      const dup = findDuplicate(ev, events);
+      const decision = importDupDecisions.get(i);
+      const dupClass = dup ? 'is-dup' : '';
+      const dupBadge = dup
+        ? `<span class="import-event__dup ${decision ? 'is-decided' : ''}">
+             ${decision === 'skip' ? 'Saltar' :
+               decision === 'replace' ? 'Reemplazar' :
+               decision === 'duplicate' ? 'Duplicar' :
+               '⚠ Ya existe'}
+           </span>`
+        : '';
+
+      const dupActions = dup && isSelected ? `
+        <div class="import-event__dup-actions">
+          <button type="button" class="dup-btn ${decision === 'skip' ? 'is-active' : ''}" data-dup="${i}" data-act="skip">Saltar</button>
+          <button type="button" class="dup-btn ${decision === 'replace' ? 'is-active' : ''}" data-dup="${i}" data-act="replace">Reemplazar</button>
+          <button type="button" class="dup-btn ${decision === 'duplicate' ? 'is-active' : ''}" data-dup="${i}" data-act="duplicate">Duplicar</button>
+        </div>
+      ` : '';
+
+      return `
+        <div class="import-event ${isSelected ? 'is-selected' : ''} ${dupClass}" data-idx="${i}">
+          <div class="import-event__icon">${meta.icon}</div>
+          <div class="import-event__body">
+            <div class="import-event__type">
+              ${meta.label}
+              ${dupBadge}
+            </div>
+            <div class="import-event__title">
+              ${escapeHtml(ev.title)}
+              <svg class="import-event__pencil"><use href="#i-pencil"/></svg>
+            </div>
+            <div class="import-event__meta"><svg><use href="#i-clock"/></svg>${when}</div>
+            ${ev.place ? `<div class="import-event__meta"><svg><use href="#i-pin"/></svg>${escapeHtml(ev.place)}</div>` : ''}
+          </div>
+          <div class="import-event__check" data-check="${i}">
+            <svg><use href="#i-check"/></svg>
+          </div>
+          <span class="import-event__confidence conf--${conf}">${confLabel}</span>
+          ${dupActions}
+        </div>
+      `;
+    }).join('');
+
+    // Toggle selección
+    eventsEl.querySelectorAll('[data-check]').forEach(el => {
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const idx = +el.dataset.check;
+        const parent = el.closest('.import-event');
+        if (importSelected.has(idx)) {
+          importSelected.delete(idx);
+          parent.classList.remove('is-selected');
+        } else {
+          importSelected.add(idx);
+          parent.classList.add('is-selected');
+        }
+        renderImportPreview(importResult);
+      });
+    });
+
+    // Botones de decisión de duplicados
+    eventsEl.querySelectorAll('[data-dup]').forEach(el => {
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const idx = +el.dataset.dup;
+        const act = el.dataset.act;
+        if (importDupDecisions.get(idx) === act) {
+          importDupDecisions.delete(idx);
+        } else {
+          importDupDecisions.set(idx, act);
+        }
+        renderImportPreview(importResult);
+      });
+    });
+
+    // Editar (click en el resto de la card)
+    eventsEl.querySelectorAll('.import-event').forEach(el => {
+      el.addEventListener('click', (ev) => {
+        if (ev.target.closest('[data-check]')) return;
+        if (ev.target.closest('[data-dup]')) return;
+        openPreviewEdit(+el.dataset.idx);
+      });
+    });
+  }
+
+  if (result.warnings && result.warnings.length) {
+    warningsEl.hidden = false;
+    warningsList.innerHTML = result.warnings.map(w => `<li>· ${escapeHtml(w)}</li>`).join('');
+  } else {
+    warningsEl.hidden = true;
+  }
+}
+/* ============================================================
+   IMPORT · Editar evento en preview
+   ============================================================ */
+const previewEditModal = document.getElementById('previewEditModal');
+const previewEditForm = document.getElementById('previewEditForm');
+const peTypeChips = document.getElementById('peTypeChips');
+let peCurrentType = 'activity';
+
+function buildPeChips() {
+  peTypeChips.innerHTML = Object.entries(TYPE_META).map(([key, m]) => `
+    <button type="button" class="chip" data-type="${key}" style="--chip-c:${m.color}">
+      <span>${m.icon}</span><span>${m.label}</span>
+    </button>
+  `).join('');
+  peTypeChips.addEventListener('click', ev => {
+    const btn = ev.target.closest('.chip');
+    if (!btn) return;
+    peCurrentType = btn.dataset.type;
+    peTypeChips.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('is-active', c.dataset.type === peCurrentType);
+    });
+  });
+}
+
+function setPeChipsActive() {
+  peTypeChips.querySelectorAll('.chip').forEach(c => {
+    c.classList.toggle('is-active', c.dataset.type === peCurrentType);
+  });
+}
+
+function openPreviewEdit(idx) {
+  if (!importResult || !importResult.events[idx]) return;
+  const ev = importResult.events[idx];
+
+  document.getElementById('peIdx').value = idx;
+  document.getElementById('peTitle').value = ev.title || '';
+  document.getElementById('peStart').value = ev.startAt ? toLocalInput(ev.startAt) : '';
+  document.getElementById('peEnd').value = ev.endAt ? toLocalInput(ev.endAt) : '';
+  document.getElementById('pePlace').value = ev.place || '';
+  document.getElementById('peCode').value = ev.confirmation_code || '';
+  document.getElementById('peNotes').value = ev.notes || '';
+
+  peCurrentType = ev.type || 'activity';
+  setPeChipsActive();
+
+  previewEditModal.hidden = false;
+  previewEditModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => document.getElementById('peTitle').focus(), 150);
+}
+
+function closePreviewEdit() {
+  previewEditModal.hidden = true;
+  previewEditModal.setAttribute('aria-hidden', 'true');
+  previewEditForm.reset();
+}
+
+previewEditModal.addEventListener('click', ev => {
+  if (ev.target.hasAttribute('data-preview-edit-close') ||
+      ev.target.closest('[data-preview-edit-close]')) {
+    closePreviewEdit();
+  }
+});
+
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && !previewEditModal.hidden) closePreviewEdit();
+});
+
+previewEditForm.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const idx = +document.getElementById('peIdx').value;
+  if (!importResult || !importResult.events[idx]) return;
+
+  importResult.events[idx] = {
+    ...importResult.events[idx],
+    type: peCurrentType,
+    title: document.getElementById('peTitle').value.trim(),
+    startAt: document.getElementById('peStart').value
+      ? fromLocalInput(document.getElementById('peStart').value)
+      : null,
+    endAt: document.getElementById('peEnd').value
+      ? fromLocalInput(document.getElementById('peEnd').value)
+      : null,
+    place: document.getElementById('pePlace').value.trim(),
+    confirmation_code: document.getElementById('peCode').value.trim() || null,
+    notes: document.getElementById('peNotes').value.trim(),
+  };
+
+  renderImportPreview(importResult);
+  closePreviewEdit();
+  toast('Evento actualizado');
+});
+
+/* ---------- Listeners del modal import ---------- */
+importModal.addEventListener('click', (ev) => {
+  if (ev.target.hasAttribute('data-import-close') || ev.target.closest('[data-import-close]')) {
+    closeImport();
+  }
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && !importModal.hidden) closeImport();
+});
+
+/* ============================================================
+   IMPORT · PDF (drag & drop + file picker)
+   ============================================================ */
+const pdfDrop = document.getElementById('pdfDrop');
+const pdfInput = document.getElementById('pdfInput');
+
+function handlePdfFile(file) {
+  if (!file) return;
+  if (!isPdfFile(file)) {
+    toast('Solo PDFs de hasta 15MB');
+    return;
+  }
+  showPdfStatus(file.name, 'Procesando…');
+  extractTextFromPdf(file)
+    .then(text => {
+      if (!text || text.length < 30) {
+        showPdfStatus(file.name, 'No pude extraer texto. ¿Es un PDF escaneado?');
+        return;
+      }
+      importText.value = text;
+      updateAnalyzeState();
+      hidePdfStatus();
+      toast(`✓ PDF procesado · ${fmtBytes(file.size)}`);
+    })
+    .catch(err => {
+      console.error(err);
+      showPdfStatus(file.name, 'Error: ' + err.message);
+    });
+}
+
+function showPdfStatus(name, status) {
+  pdfDrop.classList.add('is-processing');
+  pdfDrop.innerHTML = `
+    <div class="pdf-drop__spinner"></div>
+    <strong>${escapeHtml(name)}</strong>
+    <span>${escapeHtml(status)}</span>
+  `;
+}
+function hidePdfStatus() {
+  pdfDrop.classList.remove('is-processing');
+  pdfDrop.innerHTML = `
+    <svg class="pdf-drop__icon"><use href="#i-file"/></svg>
+    <strong>Arrastrá tu PDF acá</strong>
+    <span>o <u>elegí un archivo</u> · Booking, Airbnb, vuelos</span>
+    <input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden />
+  `;
+  // Reenganchar eventos
+  const input = pdfDrop.querySelector('#pdfInput');
+  input.addEventListener('change', e => {
+    const f = e.target.files?.[0];
+    if (f) handlePdfFile(f);
+    e.target.value = '';
+  });
+}
+
+if (pdfDrop) {
+  // Click → file picker
+  pdfDrop.addEventListener('click', (e) => {
+    if (e.target.closest('#pdfInput')) return;
+    pdfDrop.querySelector('#pdfInput')?.click();
+  });
+
+  // Drag & drop
+  ['dragenter', 'dragover'].forEach(evt => {
+    pdfDrop.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pdfDrop.classList.add('is-dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    pdfDrop.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      pdfDrop.classList.remove('is-dragover');
+    });
+  });
+  pdfDrop.addEventListener('drop', (e) => {
+    const f = e.dataTransfer?.files?.[0];
+    if (f) handlePdfFile(f);
+  });
+
+  // Init input
+  const initInput = pdfDrop.querySelector('#pdfInput');
+  initInput.addEventListener('change', (e) => {
+    const f = e.target.files?.[0];
+    if (f) handlePdfFile(f);
+    e.target.value = '';
+  });
+}
+
+document.getElementById('importBtn')?.addEventListener('click', () => openImport());
+
+/* ---------- Share Target ---------- */
+(function handleShareTarget() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('action') !== 'share-target') return;
+  const shared = params.get('text') || params.get('url') || params.get('title') || '';
+  if (shared) setTimeout(() => openImport(shared), 400);
+  history.replaceState({}, '', location.pathname);
+})();
+
+/* ---------- Recibir archivos vía POST (share_target con files) ---------- */
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'pdf-shared' && e.data.file) {
+    openImport();
+    setTimeout(() => handlePdfFile(e.data.file), 300);
+  }
+});
+
+/* ============================================================
+   PWA · Service Worker
+   ============================================================ */
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: './' });
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          toast('Nueva versión disponible · recargá');
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('SW error:', err);
+  }
+}
+
+/* ============================================================
+   PWA · Install prompt
+   ============================================================ */
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+const installBtn = document.getElementById('installBtn');
+const installClose = document.getElementById('installClose');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('ohmygoch_install_dismissed')) {
+    installBanner.hidden = false;
+  }
+});
+
+installBtn?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') toast('¡Instalada! 🎉');
+  deferredPrompt = null;
+  installBanner.hidden = true;
+});
+
+installClose?.addEventListener('click', () => {
+  installBanner.hidden = true;
+  localStorage.setItem('ohmygoch_install_dismissed', '1');
+});
+
+window.addEventListener('appinstalled', () => {
+  installBanner.hidden = true;
+  toast('OhMyGoch instalada en tu dispositivo');
+});
+
+/* ============================================================
+   PWA · Online / Offline
+   ============================================================ */
+const offlineBanner = document.getElementById('offlineBanner');
+function updateOnlineStatus() {
+  offlineBanner.hidden = navigator.onLine;
+  document.documentElement.dataset.online = navigator.onLine ? '1' : '0';
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+const IS_DEV =
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  location.hostname === '0.0.0.0' ||
+  location.protocol === 'file:';
+
+(async function boot() {
+  buildChips();
+  buildProviderChips();
+  buildPeChips();
+  await ensureSeed();
+  await renderAll();
+  updateOnlineStatus();
+
+  if (IS_DEV) {
+    console.log('🛠️  Modo DEV · Service Worker desactivado');
+  } else {
+    registerSW();
+  }
+})();

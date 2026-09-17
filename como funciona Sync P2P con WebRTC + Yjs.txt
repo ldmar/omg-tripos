@@ -1,0 +1,26 @@
+🔗 Feature F · Sync P2P con WebRTC + Yjs
+Compartís el viaje sin backend, sin cuenta, sin nube. Los cambios se propagan entre dispositivos vía WebRTC DataChannel, con CRDT (Yjs) para resolver conflictos automáticamente.
+
+
+┌─────────────┐       signaling       ┌─────────────┐
+│  Device A   │◄────(público, 1x)────►│  Device B   │
+│  (host)     │                       │  (guest)    │
+└──────┬──────┘                       └──────┬──────┘
+       │                                     │
+       │      WebRTC DataChannel (P2P)       │
+       └─────────────────────────────────────┘
+                    Yjs CRDT
+                    
+Signaling: wss://signaling.yjs.dev (gratis, no guarda datos)
+
+Transporte: WebRTC puro entre dispositivos
+
+Conflictos: resueltos por Yjs (última escritura no gana — se fusiona)
+
+Persistencia: y-indexeddb guarda el doc en el device
+
+Privacidad: password encripta el room
+
+Modo LAN (offline): si están en la misma WiFi, funciona sin signaling público vía mDNS/BroadcastChannel.
+
+

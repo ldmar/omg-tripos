@@ -1,0 +1,20 @@
+  
+    
+~/ohmygoch/TripOS/v0/
+├── index.html
+├── styles.css
+├── app.js (toda la lógica)
+├── parser.js (parseador)
+├── pdf-import.js
+├── ocr-import.js
+├── sync.js
+├── notifications.js (notificaciones)
+├── daymode.js         ← modo dia activo
+├── sw.js    (service worker)
+├── offline.html (fallback sin red)
+├── manifest.json
+├── icons/
+    ├── icon-192.png
+    ├── icon-512.png
+    └── maskable-512.png
+└── tools/
