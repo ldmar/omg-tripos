@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#fbf8f3" />
+<meta name="theme-color" content="#fbf8f3" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)" />
 
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -81,7 +82,6 @@
     <span>Acceso directo, sin navegador</span>
   </div>
   <button class="banner__btn" id="installBtn">Instalar</button>
-  <button class="banner__btn banner__btn--ghost" id="installAlreadyBtn">Ya la instalé</button>
   <button class="banner__close" id="installClose" aria-label="Cerrar">
     <svg><use href="#i-x"/></svg>
   </button>
@@ -687,15 +687,16 @@ Check-in: 5 de octubre de 2026.'"
       <label class="form__label">Destino</label>
       <div class="emoji-picker" id="emojiPicker"></div>
 
-      <label class="form__label">Fechas</label>
-      <button type="button" class="form__input form__input--date-range" id="tcDateRangeBtn">
-        <span id="tcDateRangeLabel">Elegí las fechas</span>
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <use href="#i-chevron-down"/>
-        </svg>
-      </button>
-      <input type="hidden" id="tcStart" />
-      <input type="hidden" id="tcEnd" />
+      <div class="form__grid">
+        <div>
+          <label class="form__label" for="tcStart">Inicio</label>
+          <input class="form__input" id="tcStart" type="date" />
+        </div>
+        <div>
+          <label class="form__label" for="tcEnd">Fin</label>
+          <input class="form__input" id="tcEnd" type="date" />
+        </div>
+      </div>
 
       <label class="form__label">¿Cuántos viajeros?</label>
       <div class="chips" id="tcTravelers">
@@ -806,50 +807,6 @@ Check-in: 5 de octubre de 2026.'"
       <div class="form__actions">
         <button type="button" class="btn btn--ghost" data-wcat-close>Cancelar</button>
         <button type="button" class="btn btn--primary" id="wcatConfirm">Subir</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     MODAL · Selector de rango de fechas
-     ============================================================ -->
-<div class="modal" id="rangePickerModal" hidden aria-hidden="true">
-  <div class="modal__backdrop" data-range-close></div>
-  <div class="modal__sheet modal__sheet--compact" role="dialog" aria-modal="true" aria-labelledby="rpTitle">
-    <div class="modal__handle"></div>
-
-    <header class="modal__head">
-      <h3 id="rpTitle">Seleccioná la fecha de inicio</h3>
-      <button class="iconbtn iconbtn--s" data-range-close aria-label="Cerrar">
-        <svg><use href="#i-x"/></svg>
-      </button>
-    </header>
-
-    <div class="range-picker">
-      <div class="range-picker__nav">
-        <button type="button" class="range-picker__navbtn" id="rpPrev" aria-label="Mes anterior">
-          <svg><use href="#i-chevron"/></svg>
-        </button>
-        <span class="range-picker__month" id="rpMonthLabel">—</span>
-        <button type="button" class="range-picker__navbtn" id="rpNext" aria-label="Mes siguiente">
-          <svg><use href="#i-chevron"/></svg>
-        </button>
-      </div>
-
-      <div class="range-picker__weekdays">
-        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
-      </div>
-
-      <div class="range-picker__grid" id="rpGrid"></div>
-
-      <div class="range-picker__summary" id="rpSummary">
-        Elegí la fecha de inicio
-      </div>
-
-      <div class="range-picker__actions">
-        <button type="button" class="btn btn--ghost" id="rpClear">Limpiar</button>
-        <button type="button" class="btn btn--primary" id="rpApply" disabled>Aplicar</button>
       </div>
     </div>
   </div>

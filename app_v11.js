@@ -1,7 +1,6 @@
 /* ============================================================
    OhMyGoch Trip OS · app.js
    Multi-viaje + Import Mágico + Sync + Notif + Wallet + Día Activo
-   + Range Picker + PWA v2.7.0
    ============================================================ */
 
 import { analyze, analyzeMulti, PROVIDERS, EXAMPLES } from './parser.js';
@@ -222,6 +221,8 @@ function renderTimeline() {
   if (!events.length) {
     ol.innerHTML = '';
     empty.hidden = false;
+
+    // ✅ FIX: fallback seguro si trip o trip.title no está disponible
     const tripName = trip?.title || 'tu viaje';
     if (emptyTitle) emptyTitle.textContent = `Sin eventos en "${tripName}"`;
     if (emptyDesc) emptyDesc.innerHTML = `Tocá <strong>+</strong> para agregar un evento, o <strong>📥</strong> para importar tu reserva.`;
@@ -1473,6 +1474,7 @@ async function startSync() {
 
     sync.setLocalUser({ name: 'Vos', color: '#ff5c39' });
 
+    // Publicar meta del viaje
     sync.setTripMeta({
       title: trip.title,
       flag: trip.flag,
@@ -1483,6 +1485,7 @@ async function startSync() {
       timezone: trip.timezone,
     });
 
+    // Eventos remotos
     sync.onRemoteChange(async () => {
       await applyRemoteState();
       await renderAll();
@@ -1490,6 +1493,7 @@ async function startSync() {
       toast('⟳ Actualizado desde otro dispositivo');
     });
 
+    // Meta del viaje remota
     sync.onTripMetaChange(async (meta) => {
       if (!meta || !meta.title) return;
 
@@ -1522,6 +1526,7 @@ async function startSync() {
     await applyRemoteState();
     await renderAll();
 
+    // Link: tripId~secret (¡importante el formato!)
     const url = new URL(location.href);
     url.searchParams.set('join', `${trip.id}~${sync.getSecret(trip.id)}`);
     if (shareLink) shareLink.value = url.toString();
@@ -1669,6 +1674,7 @@ async function renderQr(text) {
 
   shareQr.innerHTML = `<div class="share__qr-placeholder">Generando QR…</div>`;
 
+  // ---------- Intento 1 · qrcodejs ----------
   try {
     const QRCode = await loadQrLib();
     shareQr.innerHTML = '';
@@ -1697,6 +1703,7 @@ async function renderQr(text) {
     console.warn('⚠️ qrcodejs falló:', err.message);
   }
 
+  // ---------- Intento 2 · API externa ----------
   try {
     const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(text)}`;
     shareQr.innerHTML = '';
@@ -1723,6 +1730,7 @@ async function renderQr(text) {
     console.warn('⚠️ API externa falló:', err.message);
   }
 
+  // ---------- Fallback final ----------
   shareQr.innerHTML = `
     <div class="share__qr-placeholder">
       <div style="font-size:42px;margin-bottom:8px">📱</div>
@@ -1788,7 +1796,7 @@ document.getElementById('shareNativeBtn')?.addEventListener('click', async () =>
 });
 
 /* ============================================================
-   HANDLE JOIN
+   HANDLE JOIN · ¡CRÍTICO para compartir viajes!
    ============================================================ */
 async function handleJoin() {
   const params = new URLSearchParams(location.search);
@@ -1797,6 +1805,7 @@ async function handleJoin() {
 
   console.log('🔗 Join detectado · parámetro:', join);
 
+  // Formato: tripId~secret
   const parts = join.split('~');
   if (parts.length !== 2) {
     console.warn('🔗 Formato desconocido:', join);
@@ -1810,10 +1819,13 @@ async function handleJoin() {
     return false;
   }
 
+  // Guardar el secret para este viaje
   localStorage.setItem(`ohmygoch_secret_${joinTripId}`, secret);
 
+  // ¿Existe el viaje localmente?
   const existing = await trips.getTrip(joinTripId);
 
+  // Crear el viaje O REPARARLO si está corrupto (sin title)
   if (!existing || !existing.title) {
     await trips.idbPut(trips.STORES.TRIPS, {
       id: joinTripId,
@@ -1833,6 +1845,7 @@ async function handleJoin() {
     console.log('📚 Viaje ya existía localmente:', existing.title);
   }
 
+  // Activar este viaje
   await trips.setActiveTrip(joinTripId);
   console.log('✅ Viaje activado:', joinTripId);
 
@@ -2177,8 +2190,6 @@ function openTripCreateModal() {
   tripCreateModal.hidden = false;
   tripCreateModal.setAttribute('aria-hidden', 'false');
   setTimeout(() => document.getElementById('tcTitle').focus(), 150);
-
-  updateDateRangeLabel();
 }
 
 function closeTripCreateModal() {
@@ -2408,6 +2419,7 @@ tripRenameForm.addEventListener('submit', async (ev) => {
   if (trip?.id === id) {
     trip = await trips.getActiveTrip();
     renderTrip();
+    // Re-publicar meta a los peers
     try { sync.setTripMeta({ title: trip.title, flag: trip.flag }); } catch {}
   }
 
@@ -2420,221 +2432,12 @@ document.getElementById('emptyImportBtn')?.addEventListener('click', () => openI
 document.getElementById('emptyCreateBtn')?.addEventListener('click', () => openModal());
 
 /* ============================================================
-   RANGE PICKER · tipo Airbnb
-   ============================================================ */
-const rpModal = document.getElementById('rangePickerModal');
-const rpGrid = document.getElementById('rpGrid');
-const rpMonthLabel = document.getElementById('rpMonthLabel');
-const rpTitle = document.getElementById('rpTitle');
-const rpSummary = document.getElementById('rpSummary');
-const rpApply = document.getElementById('rpApply');
-const rpClear = document.getElementById('rpClear');
-const rpPrev = document.getElementById('rpPrev');
-const rpNext = document.getElementById('rpNext');
-const tcDateRangeBtn = document.getElementById('tcDateRangeBtn');
-const tcDateRangeLabel = document.getElementById('tcDateRangeLabel');
-
-let rpStart = null;
-let rpEnd = null;
-let rpViewDate = new Date();
-let rpSelecting = 'start';
-
-const MES_LARGO = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-function rpSameDay(a, b) {
-  return a && b &&
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-}
-
-function fmtRangeDate(d) {
-  if (!d) return '';
-  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  return `${d.getDate()} ${meses[d.getMonth()]}`;
-}
-
-function toYMD(d) {
-  if (!d) return '';
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function fromYMD(s) {
-  if (!s) return null;
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function renderRangePicker() {
-  if (!rpGrid) return;
-  const year = rpViewDate.getFullYear();
-  const month = rpViewDate.getMonth();
-
-  rpMonthLabel.textContent = `${MES_LARGO[month]} ${year}`;
-  rpTitle.textContent = rpSelecting === 'start'
-    ? 'Seleccioná la fecha de inicio'
-    : 'Seleccioná la fecha de fin';
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startWeekday = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = lastDay.getDate();
-  const today = new Date();
-
-  let html = '';
-
-  const prevMonthLast = new Date(year, month, 0).getDate();
-  for (let i = 0; i < startWeekday; i++) {
-    const day = prevMonthLast - startWeekday + i + 1;
-    html += `<button type="button" class="range-picker__day is-outside" disabled>${day}</button>`;
-  }
-
-  for (let i = 1; i <= daysInMonth; i++) {
-    const d = new Date(year, month, i);
-    let cls = 'range-picker__day';
-
-    if (rpSameDay(d, today)) cls += ' is-today';
-    if (rpStart && rpSameDay(d, rpStart)) cls += ' is-selected is-start';
-    if (rpEnd && rpSameDay(d, rpEnd)) cls += ' is-selected is-end';
-    if (rpStart && rpEnd && d > rpStart && d < rpEnd) cls += ' is-between';
-
-    html += `<button type="button" class="${cls}" data-date="${toYMD(d)}">${i}</button>`;
-  }
-
-  const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
-  const remaining = totalCells - (startWeekday + daysInMonth);
-  for (let i = 1; i <= remaining; i++) {
-    html += `<button type="button" class="range-picker__day is-outside" disabled>${i}</button>`;
-  }
-
-  rpGrid.innerHTML = html;
-
-  rpGrid.querySelectorAll('[data-date]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const d = fromYMD(btn.dataset.date);
-      if (!d) return;
-
-      if (rpSelecting === 'start') {
-        rpStart = d;
-        rpEnd = null;
-        rpSelecting = 'end';
-      } else {
-        if (d < rpStart) {
-          rpStart = d;
-          rpEnd = null;
-          rpSelecting = 'end';
-        } else if (rpSameDay(d, rpStart)) {
-          rpEnd = d;
-          rpSelecting = 'start';
-        } else {
-          rpEnd = d;
-          rpSelecting = 'start';
-        }
-      }
-      renderRangePicker();
-    });
-  });
-
-  if (rpStart && rpEnd) {
-    const dias = Math.round((rpEnd - rpStart) / (24 * 60 * 60 * 1000)) + 1;
-    rpSummary.textContent = `${fmtRangeDate(rpStart)} → ${fmtRangeDate(rpEnd)} · ${dias} día${dias > 1 ? 's' : ''}`;
-    rpSummary.style.color = 'var(--text)';
-    rpApply.disabled = false;
-  } else if (rpStart) {
-    rpSummary.textContent = `${fmtRangeDate(rpStart)} → elegí la fecha de fin`;
-    rpSummary.style.color = 'var(--text-2)';
-    rpApply.disabled = true;
-  } else {
-    rpSummary.textContent = 'Elegí la fecha de inicio';
-    rpSummary.style.color = 'var(--muted)';
-    rpApply.disabled = true;
-  }
-}
-
-function openRangePicker() {
-  const existingStart = document.getElementById('tcStart').value;
-  const existingEnd = document.getElementById('tcEnd').value;
-  rpStart = fromYMD(existingStart);
-  rpEnd = fromYMD(existingEnd);
-  rpViewDate = rpStart ? new Date(rpStart) : new Date();
-  rpSelecting = rpStart && !rpEnd ? 'end' : 'start';
-
-  renderRangePicker();
-  rpModal.hidden = false;
-  rpModal.setAttribute('aria-hidden', 'false');
-}
-
-function closeRangePicker() {
-  rpModal.hidden = true;
-  rpModal.setAttribute('aria-hidden', 'true');
-}
-
-function updateDateRangeLabel() {
-  if (!tcDateRangeLabel || !tcDateRangeBtn) return;
-  const s = document.getElementById('tcStart').value;
-  const e = document.getElementById('tcEnd').value;
-  const start = fromYMD(s);
-  const end = fromYMD(e);
-
-  if (start && end) {
-    const dias = Math.round((end - start) / (24 * 60 * 60 * 1000)) + 1;
-    tcDateRangeLabel.textContent = `${fmtRangeDate(start)} → ${fmtRangeDate(end)} · ${dias} día${dias > 1 ? 's' : ''}`;
-    tcDateRangeBtn.classList.remove('is-empty');
-  } else if (start) {
-    tcDateRangeLabel.textContent = `${fmtRangeDate(start)} → elegí fin`;
-    tcDateRangeBtn.classList.remove('is-empty');
-  } else {
-    tcDateRangeLabel.textContent = 'Elegí las fechas';
-    tcDateRangeBtn.classList.add('is-empty');
-  }
-}
-
-tcDateRangeBtn?.addEventListener('click', openRangePicker);
-
-rpPrev?.addEventListener('click', () => {
-  rpViewDate = new Date(rpViewDate.getFullYear(), rpViewDate.getMonth() - 1, 1);
-  renderRangePicker();
-});
-rpNext?.addEventListener('click', () => {
-  rpViewDate = new Date(rpViewDate.getFullYear(), rpViewDate.getMonth() + 1, 1);
-  renderRangePicker();
-});
-
-rpClear?.addEventListener('click', () => {
-  rpStart = null;
-  rpEnd = null;
-  rpSelecting = 'start';
-  renderRangePicker();
-});
-
-rpApply?.addEventListener('click', () => {
-  document.getElementById('tcStart').value = rpStart ? toYMD(rpStart) : '';
-  document.getElementById('tcEnd').value = rpEnd ? toYMD(rpEnd) : '';
-  updateDateRangeLabel();
-  closeRangePicker();
-});
-
-rpModal?.addEventListener('click', (ev) => {
-  if (ev.target.hasAttribute('data-range-close') ||
-      ev.target.closest('[data-range-close]')) {
-    closeRangePicker();
-  }
-});
-
-document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Escape' && rpModal && !rpModal.hidden) closeRangePicker();
-});
-
-/* ============================================================
    PWA · Service Worker
    ============================================================ */
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    const reg = await navigator.serviceWorker.register('sw.js');
-    console.log('✅ SW registrado · scope:', reg.scope);
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: './' });
     reg.addEventListener('updatefound', () => {
       const nw = reg.installing;
       if (!nw) return;
@@ -2650,26 +2453,32 @@ async function registerSW() {
 }
 
 /* ============================================================
-   PWA · Install · con flag global que mata el banner
+   PWA · Install · detección robusta (MIUI-safe)
    ============================================================ */
 let deferredPrompt = null;
 const installBanner = document.getElementById('installBanner');
 const installBtn = document.getElementById('installBtn');
 const installClose = document.getElementById('installClose');
-const installAlreadyBtn = document.getElementById('installAlreadyBtn');
-
-// 🔥 Flag global en memoria: si está true, NUNCA más se muestra el banner
-let INSTALL_BANNER_KILLED = false;
 
 function isPWAInstalled() {
   try {
+    // Flag persistente (lo seteamos cuando el user instaló o cuando detectamos el modo app)
     if (localStorage.getItem('ohmygoch_installed') === '1') return true;
+
+    // Media queries estándar
     if (window.matchMedia('(display-mode: standalone)').matches) return true;
     if (window.matchMedia('(display-mode: fullscreen)').matches) return true;
     if (window.matchMedia('(display-mode: minimal-ui)').matches) return true;
+
+    // iOS
     if (window.navigator.standalone === true) return true;
+
+    // Android PWA launch (referrer especial)
     if (document.referrer && document.referrer.startsWith('android-app://')) return true;
+
+    // WebView standalone
     if (window.self !== window.top) return true;
+
     return false;
   } catch {
     return false;
@@ -2678,94 +2487,57 @@ function isPWAInstalled() {
 
 function markInstalled() {
   localStorage.setItem('ohmygoch_installed', '1');
-  INSTALL_BANNER_KILLED = true;
   installBanner.hidden = true;
   document.body.classList.add('is-standalone');
-  console.log('🔒 Banner matado permanentemente');
-}
-
-function killInstallBanner() {
-  INSTALL_BANNER_KILLED = true;
-  installBanner.hidden = true;
-  deferredPrompt = null;
-  console.log('🔒 Banner matado por acción del usuario');
 }
 
 function applyStandaloneClass() {
   const on = isPWAInstalled();
   document.body.classList.toggle('is-standalone', on);
-  if (on) markInstalled();
+  if (on) installBanner.hidden = true;
   return on;
 }
 
-// Si ya está instalada → matar banner desde el arranque
+// Chequeo agresivo al inicio · si estamos en modo app, marcamos
 if (isPWAInstalled()) markInstalled();
-if (localStorage.getItem('ohmygoch_install_dismissed') === '1') INSTALL_BANNER_KILLED = true;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
 
-  // ✅ Si el banner ya fue matado, ignorar TODO
-  if (INSTALL_BANNER_KILLED) {
-    console.log('📦 beforeinstallprompt ignorado (banner matado)');
+  // Ya está instalada → nunca mostrar banner
+  if (isPWAInstalled()) {
+    deferredPrompt = null;
+    installBanner.hidden = true;
     return;
   }
 
-  if (isPWAInstalled()) {
-    markInstalled();
+  // El user ya descartó el banner
+  if (localStorage.getItem('ohmygoch_install_dismissed') === '1') {
+    deferredPrompt = null;
     return;
   }
 
   deferredPrompt = e;
   installBanner.hidden = false;
-  console.log('📦 Banner mostrado');
 });
 
 installBtn?.addEventListener('click', async () => {
-  if (INSTALL_BANNER_KILLED) return;
-
-  if (isPWAInstalled()) {
-    markInstalled();
-    return;
-  }
-
-  if (!deferredPrompt) {
-    alert(
-      '📲 Para instalar la app:\n\n' +
-      '1. Tocá el menú ⋮ de Chrome (arriba a la derecha)\n' +
-      '2. Elegí "Instalar aplicación" o "Añadir a pantalla de inicio"\n' +
-      '3. Confirmá'
-    );
-    return;
-  }
-
+  if (!deferredPrompt) return;
   try {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
       markInstalled();
       toast('¡Instalada! 🎉');
-    } else {
-      killInstallBanner();
-      toast('Instalación cancelada');
     }
-  } catch (err) {
-    console.error(err);
-    killInstallBanner();
-  }
+  } catch {}
   deferredPrompt = null;
-});
-
-installAlreadyBtn?.addEventListener('click', () => {
-  localStorage.setItem('ohmygoch_installed', '1');
-  killInstallBanner();
-  document.body.classList.add('is-standalone');
-  toast('✓ Banner silenciado para siempre');
+  installBanner.hidden = true;
 });
 
 installClose?.addEventListener('click', () => {
+  installBanner.hidden = true;
   localStorage.setItem('ohmygoch_install_dismissed', '1');
-  killInstallBanner();
 });
 
 window.addEventListener('appinstalled', () => {
@@ -2773,6 +2545,7 @@ window.addEventListener('appinstalled', () => {
   toast('OhMyGoch instalada');
 });
 
+/* ---------- Detección de cambios de display-mode ---------- */
 try {
   const mq = window.matchMedia('(display-mode: standalone)');
   mq.addEventListener?.('change', () => {
@@ -2784,26 +2557,41 @@ try {
 } catch {}
 
 /* ============================================================
-   PWA · Online/Offline · ping real a recurso propio
+   PWA · Online/Offline · detección robusta
+   navigator.onLine en Android da falsos negativos → ping real
    ============================================================ */
 const offlineBanner = document.getElementById('offlineBanner');
+let onlineCheckTimer = null;
+let confirmOfflineTimer = null;
 let isConfirmedOffline = false;
-let checkInFlight = false;
 
-async function pingSelf() {
+async function pingReal() {
   try {
+    // Endpoint liviano + cache-busting
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch('./index.html?_=' + Date.now(), {
+    await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=10x10&data=x&_=${Date.now()}`, {
       method: 'HEAD',
+      mode: 'no-cors',
       cache: 'no-store',
       signal: ctrl.signal,
     });
     clearTimeout(timeout);
-    return res.ok;
+    return true;
   } catch {
     return false;
   }
+}
+
+async function checkOnline() {
+  // No pingear si estamos en localhost · siempre online ahí
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    setOffline(false);
+    return;
+  }
+
+  const ok = await pingReal();
+  setOffline(!ok);
 }
 
 function setOffline(offline) {
@@ -2816,37 +2604,38 @@ function setOffline(offline) {
   console.log(offline ? '📴 Offline confirmado' : '📶 Online confirmado');
 }
 
-async function checkConnectivity() {
-  if (checkInFlight) return;
-  checkInFlight = true;
-
-  try {
-    if (navigator.onLine) {
-      setOffline(false);
-      return;
-    }
-    const alive = await pingSelf();
-    setOffline(!alive);
-  } finally {
-    checkInFlight = false;
-  }
+function scheduleOnlineCheck() {
+  clearTimeout(confirmOfflineTimer);
+  // Debounce de 3s: esperar antes de mostrar "offline" (evita parpadeos)
+  confirmOfflineTimer = setTimeout(checkOnline, 3000);
 }
 
-setTimeout(checkConnectivity, 1500);
-setInterval(checkConnectivity, 30000);
-
-window.addEventListener('online', () => {
+// Inicial: hacemos ping y esperamos a tener resultado antes de decidir
+(async function initOnlineStatus() {
+  // Al inicio asumimos online (no mostramos banner)
   setOffline(false);
-  setTimeout(checkConnectivity, 2000);
+  // Después de 2s, verificamos
+  setTimeout(checkOnline, 2000);
+  // Chequeo periódico cada 45s
+  onlineCheckTimer = setInterval(checkOnline, 45000);
+})();
+
+// Eventos nativos (rápidos pero poco confiables en Android)
+window.addEventListener('online', () => {
+  // Solo confiar en 'online' · es una buena noticia (pasar a online)
+  setOffline(false);
+  scheduleOnlineCheck();
 });
 
 window.addEventListener('offline', () => {
-  setTimeout(checkConnectivity, 3000);
+  // No confiar directo en 'offline' · confirmar con ping
+  scheduleOnlineCheck();
 });
 
+// Cuando el usuario vuelve a la app, re-verificar
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    setTimeout(checkConnectivity, 500);
+    scheduleOnlineCheck();
   }
 });
 
@@ -2870,36 +2659,45 @@ const IS_DEV =
   location.protocol === 'file:';
 
 (async function boot() {
+  // 1. CRÍTICO: handleJoin ANTES de todo
   await handleJoin();
 
+  // Detectar si ya está instalada (oculta banner y ajusta UI)
   applyStandaloneClass();
-
+  
+  // 2. Inicializar multi-viaje
   await trips.ensureInitialized();
 
+  // 3. Cargar trip activo
   trip = await trips.getActiveTrip();
 
+  // 4. UI
   buildChips();
   buildProviderChips();
   buildPeChips();
 
+  // 5. Datos
   await loadAll();
   await renderAll();
 
+  // 7. Sync
   await startSync();
 
+  // 8. Notif
   notif.loadSettings();
   notif.refreshEvents(events);
   if (notif.getSettings().enabled) {
     notif.start(events);
   }
 
+  // 9. Wallet
   await renderWallet();
 
+  // 10. PWA
   if (IS_DEV) {
     console.log('🛠️  Modo DEV · Service Worker desactivado');
     console.log('📚 Viaje activo:', trip?.title, '(' + trip?.id + ')', '·', events.length, 'eventos');
   } else {
-    console.log('🌐 Modo PROD · registrando Service Worker');
     registerSW();
   }
 })();

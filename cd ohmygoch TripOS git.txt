@@ -1,0 +1,7 @@
+cd ~/ohmygoch/TripOS/
+git init
+git add .
+git commit -m "OhMyGoch Trip OS · v2.0 · PWA multi-viaje"
+git branch -M main
+git remote add origin https://github.com/ldmar/omg-tripos.git
+git push -u origin main

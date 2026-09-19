@@ -6,6 +6,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#fbf8f3",
   "theme_color": "#fbf8f3",
@@ -19,13 +20,25 @@
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Importar reserva", "short_name": "Importar", "url": "./?action=import" },
-    { "name": "Ver hoy", "short_name": "Hoy", "url": "./?action=today" }
+    {
+      "name": "Importar reserva",
+      "short_name": "Importar",
+      "url": "./?action=import"
+    },
+    {
+      "name": "Ver hoy",
+      "short_name": "Hoy",
+      "url": "./?action=today"
+    }
   ],
   "share_target": {
     "action": "./?action=share-target",
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
-    "params": { "title": "title", "text": "text", "url": "url" }
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
   }
 }

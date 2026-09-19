@@ -1,0 +1,10 @@
+Paso 1 · Arrancá el servidor tripos
+Abrí una terminal y ejecutá:
+
+cd ~/ohmygoch/TripOS
+python3 -m http.server 3002
+
+Paso 2 · Abrí por HTTP
+En el navegador:
+
+http://localhost:3002/

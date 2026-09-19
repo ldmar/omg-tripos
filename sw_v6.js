@@ -1,37 +1,32 @@
 /* ============================================================
    OhMyGoch Trip OS · Service Worker
-   v2.7.0 · network-first para assets críticos
    ============================================================ */
 
-const VERSION = 'OMGTripOS-v2.7.1';
+const VERSION = 'OMGTripOS-v2.6.0';
 const CORE = 'core-' + VERSION;
 const RUNTIME = 'runtime-' + VERSION;
 
-// Assets críticos → SIEMPRE frescos (network-first)
-const FRESH_ASSETS = [
+const CORE_ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './trips.js',
   './parser.js',
-  './sync.js',
-];
-
-// Assets de relleno → cache-first
-const CORE_ASSETS = [
   './pdf-import.js',
   './ocr-import.js',
+  './sync.js',
   './notifications.js',
   './daymode.js',
   './wallet.js',
+  './manifest.json',
   './offline.html',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CORE)
-      .then(cache => cache.addAll([...FRESH_ASSETS, ...CORE_ASSETS]).catch(() => null))
+      .then(cache => cache.addAll(CORE_ASSETS).catch(() => null))
       .then(() => self.skipWaiting())
   );
 });
@@ -63,12 +58,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const path = url.pathname.split('/').pop();
-  if (FRESH_ASSETS.some(a => a.endsWith(path)) || path === '') {
-    event.respondWith(networkFirst(request, CORE, null));
-    return;
-  }
-
   event.respondWith(cacheFirst(request, CORE));
 });
 
@@ -95,13 +84,10 @@ async function networkFirst(request, cacheName, offlinePath) {
   } catch {
     const hit = await cache.match(request, { ignoreSearch: true });
     if (hit) return hit;
-    if (offlinePath) {
-      const offline = await caches.match(offlinePath);
-      if (offline) return offline;
-    }
     const index = await cache.match('./index.html');
     if (index) return index;
-    return new Response('Offline', { status: 503 });
+    return (await caches.match(offlinePath)) ||
+           new Response('Offline', { status: 503 });
   }
 }
 

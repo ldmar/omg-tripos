@@ -1,5 +1,5 @@
 /* ============================================================
-   Trip OS · Design System
+   OhMyGoch Trip OS · Design System
    ============================================================ */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -105,7 +105,7 @@ body {
 }
 
 /* ============================================================
-   TOPBAR · única definición
+   TOP BAR
    ============================================================ */
 
 .topbar {
@@ -122,61 +122,25 @@ body {
   z-index: 5;
 }
 
-body.is-standalone .topbar {
-  padding-top: calc(var(--safe-top) + 32px);
-}
-
-.topbar__trip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  min-height: 44px;
-  flex: 1;
-  background: transparent;
-  border: none;
-  padding: 6px 8px;
-  margin: -6px -8px;
-  border-radius: 12px;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  transition: background .15s ease;
-}
-.topbar__trip:hover { background: var(--surface-2); }
-.topbar__trip:active { transform: scale(.98); }
-
-.topbar__trip-text { min-width: 0; flex: 1; }
-
-.topbar__chevron {
-  width: 14px;
-  height: 14px;
-  color: var(--muted);
-  flex-shrink: 0;
-  transition: transform .2s ease;
-}
-.topbar__trip:hover .topbar__chevron { color: var(--text-2); transform: translateY(1px); }
-
+.topbar__trip { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .topbar__flag {
   width: 40px; height: 40px;
   border-radius: 12px;
   display: grid; place-items: center;
   background: var(--surface-2);
   flex-shrink: 0;
-  font-size: 22px;
-  line-height: 1;
-  overflow: hidden;
+  cursor: pointer;
   user-select: none;
+  overflow: hidden;
 }
-.topbar__flag span { display: block; }
 .topbar__flag svg {
   width: 26px;
   height: 26px;
   border-radius: 5px;
   box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .2s ease;
 }
-
+.topbar__flag:hover svg { transform: scale(1.05); }
 .topbar__label {
   margin: 0;
   font-size: 11px;
@@ -185,7 +149,6 @@ body.is-standalone .topbar {
   color: var(--muted);
   font-weight: 600;
 }
-
 .topbar__title {
   margin: 0;
   font-family: var(--font-serif);
@@ -198,13 +161,6 @@ body.is-standalone .topbar {
   max-width: 220px;
 }
 
-.topbar__actions {
-  display: flex;
-  gap: 8px;
-  min-height: 42px;
-}
-
-/* ---------- Icon buttons ---------- */
 .iconbtn {
   position: relative;
   width: 40px; height: 40px;
@@ -233,6 +189,8 @@ body.is-standalone .topbar {
   100% { transform: scale(1); }
 }
 
+.topbar__actions { display: flex; gap: 8px; }
+
 .iconbtn--accent {
   background: linear-gradient(135deg, var(--accent), #ff8a5b);
   color: #fff;
@@ -240,88 +198,6 @@ body.is-standalone .topbar {
 }
 .iconbtn--accent:hover { background: linear-gradient(135deg, #ff4a22, #ff7a47); }
 .iconbtn--accent svg { width: 19px; height: 19px; }
-
-.iconbtn--daymode {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(99,102,241,.35);
-}
-.iconbtn--daymode:hover { background: linear-gradient(135deg, #5558e8, #7c4ff0); }
-.iconbtn--daymode svg { width: 15px; height: 15px; margin-left: 2px; }
-
-.iconbtn--notif-on {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-  color: var(--accent);
-}
-.iconbtn--notif-on svg { color: var(--accent); }
-
-/* ---------- Topbar responsive · mobile 2 filas ---------- */
-@media (max-width: 440px) {
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding-top: calc(var(--safe-top) + 14px);
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
-  body.is-standalone .topbar {
-    padding-top: calc(var(--safe-top) + 30px);
-  }
-
-  .topbar__trip {
-    flex: 0 0 auto;
-    width: 100%;
-    padding: 8px 12px;
-    margin: 0;
-    background: var(--surface-2);
-    border-radius: 14px;
-  }
-  .topbar__trip:hover { background: var(--surface-3); }
-
-  .topbar__flag {
-    width: 38px;
-    height: 38px;
-    font-size: 20px;
-  }
-
-  .topbar__title {
-    font-size: 16px;
-    max-width: none;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .topbar__chevron {
-    width: 16px;
-    height: 16px;
-  }
-
-  .topbar__actions {
-    flex: 0 0 auto;
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-
-  .topbar__actions .iconbtn {
-    width: 100%;
-    max-width: none;
-    height: 44px;
-  }
-
-  .topbar__actions .iconbtn svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-@media (max-width: 360px) {
-  .topbar__title { font-size: 15px; }
-  .topbar__actions .iconbtn { height: 42px; }
-}
 
 /* ============================================================
    VIEWPORT + VIEWS
@@ -495,6 +371,7 @@ body.is-standalone .topbar {
   background: var(--accent);
   animation: pulse 1.8s ease-in-out infinite;
 }
+@keyframes pulse { 50% { opacity: .4; } }
 .nextcard__body { flex: 1; min-width: 0; }
 .nextcard__label {
   margin: 0 0 4px;
@@ -592,7 +469,6 @@ body.is-standalone .topbar {
 .tl--food      .tl__dot { border-color: var(--c-food); }
 .tl--hotel     .tl__dot { border-color: var(--c-hotel); }
 .tl--airbnb    .tl__dot { border-color: var(--c-hotel); }
-.tl--car       .tl__dot { border-color: #6366f1; }
 .tl--activity  .tl__dot { border-color: var(--c-activity); }
 .tl--next .tl__dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
 
@@ -635,7 +511,6 @@ body.is-standalone .topbar {
 .tl--food      .tl__ico { background: color-mix(in srgb, var(--c-food) 14%, var(--surface-2)); }
 .tl--hotel     .tl__ico { background: color-mix(in srgb, var(--c-hotel) 14%, var(--surface-2)); }
 .tl--airbnb    .tl__ico { background: color-mix(in srgb, var(--c-hotel) 14%, var(--surface-2)); }
-.tl--car       .tl__ico { background: color-mix(in srgb, #6366f1 14%, var(--surface-2)); }
 .tl--activity  .tl__ico { background: color-mix(in srgb, var(--c-activity) 14%, var(--surface-2)); }
 
 .tl__body { min-width: 0; flex: 1; }
@@ -660,21 +535,6 @@ body.is-standalone .topbar {
   color: var(--text-2) !important;
 }
 .tl__place svg { width: 12px; height: 12px; flex-shrink: 0; }
-
-.tl__reminder {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 6px;
-  padding: 1px 6px;
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  vertical-align: middle;
-  letter-spacing: .02em;
-}
 
 /* ============================================================
    NEARBY CAROUSEL
@@ -818,8 +678,10 @@ body.is-standalone .topbar {
 .sheet__btn svg { width: 15px; height: 15px; }
 
 /* ============================================================
-   WALLET legacy (tickets)
+   WALLET
    ============================================================ */
+
+.wallet-grid { display: flex; flex-direction: column; gap: 14px; }
 
 .ticket {
   position: relative;
@@ -1061,13 +923,14 @@ body.is-standalone .topbar {
 }
 
 /* ============================================================
-   BANNERS
+   PWA · Banners, modal, form, toast, estados
    ============================================================ */
 
 .banner {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
+  top: calc(var(--safe-top) + 8px);
   width: calc(100% - 24px);
   max-width: 460px;
   display: flex;
@@ -1080,6 +943,11 @@ body.is-standalone .topbar {
   box-shadow: var(--shadow-lg);
   font-size: 13px;
   z-index: 100;
+  animation: bannerIn .35s cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes bannerIn {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
 }
 .banner svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--accent); }
 .banner__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1105,47 +973,8 @@ body.is-standalone .topbar {
   display: grid; place-items: center;
 }
 .banner__close svg { width: 16px; height: 16px; color: var(--muted); }
-
-/* ---------- Banner OFFLINE · pill chico abajo del topbar ---------- */
-.banner--offline {
-  top: auto;
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 76px);
-  width: auto;
-  max-width: none;
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(15, 17, 21, .92);
-  color: #f2f3f5;
-  border: 1px solid rgba(255,255,255,.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  animation: bannerInBottom .35s cubic-bezier(.2,.9,.3,1) both;
-  pointer-events: none;
-  z-index: 90;
-}
-.banner--offline svg {
-  width: 14px;
-  height: 14px;
-  color: #f59e0b;
-}
-
-/* ---------- Banner INSTALL · abajo (nunca tapa el topbar) ---------- */
-.banner--install {
-  top: auto;
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 16px);
-  animation: bannerInBottom .35s cubic-bezier(.2,.9,.3,1) both;
-}
-
-@keyframes bannerInBottom {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
-}
-
-/* ============================================================
-   EMPTY STATE
-   ============================================================ */
+.banner--offline { background: #1f232b; color: #f2f3f5; border-color: #2a2e38; }
+.banner--offline svg { color: #f59e0b; }
 
 .empty {
   padding: 40px 20px;
@@ -1158,29 +987,6 @@ body.is-standalone .topbar {
 .empty h4 { margin: 0 0 4px; font-size: 15px; }
 .empty p  { margin: 0; font-size: 13px; color: var(--muted); }
 .empty strong { color: var(--accent); }
-
-.empty__actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.empty__actions .btn { flex: 0 0 auto; min-width: 140px; }
-
-.empty__hint {
-  margin-top: 16px !important;
-  font-size: 12px !important;
-  color: var(--muted) !important;
-  font-style: italic;
-  max-width: 280px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* ============================================================
-   MODAL
-   ============================================================ */
 
 .modal {
   position: fixed;
@@ -1222,11 +1028,6 @@ body.is-standalone .topbar {
   .modal__sheet { border-radius: 22px; max-height: 88dvh; padding-bottom: 20px; }
 }
 
-.modal__sheet--compact {
-  max-width: 420px;
-  padding-bottom: calc(20px + var(--safe-bottom));
-}
-
 .modal__handle {
   width: 40px; height: 4px;
   border-radius: 999px;
@@ -1245,14 +1046,6 @@ body.is-standalone .topbar {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -.01em;
-}
-.modal__compact-title {
-  margin: 0 0 16px;
-  font-family: var(--font-serif);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -.01em;
-  text-align: center;
 }
 .iconbtn--s { width: 34px; height: 34px; border-radius: 50%; }
 .iconbtn--s svg { width: 16px; height: 16px; }
@@ -1291,56 +1084,6 @@ body.is-standalone .topbar {
   gap: 10px;
   margin-top: 16px;
 }
-.form__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.form__grid .form__label { margin-top: 8px; }
-.form__grid small {
-  font-size: 10px;
-  opacity: .65;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
-}
-
-.form__checkbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--surface-2);
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 13.5px;
-  font-weight: 500;
-  margin-top: 8px;
-  user-select: none;
-}
-.form__checkbox input { display: none; }
-.form__checkbox-box {
-  width: 20px; height: 20px;
-  border-radius: 6px;
-  border: 2px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  transition: all .15s ease;
-}
-.form__checkbox input:checked + .form__checkbox-box {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.form__checkbox input:checked + .form__checkbox-box::after {
-  content: '';
-  width: 10px; height: 6px;
-  border-left: 2px solid #fff;
-  border-bottom: 2px solid #fff;
-  transform: rotate(-45deg) translate(1px, -1px);
-}
-
 .btn {
   flex: 1;
   border: none;
@@ -1381,57 +1124,37 @@ body.is-standalone .topbar {
 }
 .btn--lg svg { width: 18px; height: 18px; }
 
-.btn--camera {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  padding: 11px 16px;
-  font-size: 13.5px;
-  margin-top: -4px;
-}
-.btn--camera:hover {
-  background: var(--surface-3);
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-}
-.btn--camera:active { transform: scale(.98); }
-.btn--camera svg {
-  width: 17px;
-  height: 17px;
-  color: var(--accent);
-}
-
 .btn:disabled {
   opacity: .45;
   cursor: not-allowed;
 }
 
 /* ============================================================
-   CHIPS
+   CHIPS  ← los chips bajan a la siguiente línea   sino pone auto flex-wrap: auto;
    ============================================================ */
 .chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap;          
   gap: 8px;
   padding: 2px 0 4px;
 }
 
+.chips::-webkit-scrollbar { display: none; }
 .chip {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 9px 14px;
   border-radius: 999px;
   background: var(--surface-2);
   border: 1.5px solid transparent;
   color: var(--text-2);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all .15s ease;
-  white-space: nowrap;
 }
 .chip:active { transform: scale(.96); }
 .chip.is-active {
@@ -1573,9 +1296,6 @@ body.is-standalone .topbar {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   background: var(--surface);
 }
-.import-event.is-dup {
-  border-color: color-mix(in srgb, #f59e0b 55%, var(--border));
-}
 
 .import-event__check {
   position: absolute;
@@ -1669,56 +1389,31 @@ body.is-standalone .topbar {
 .import__warnings li:last-child { margin-bottom: 0; }
 
 /* ============================================================
-   DUPLICADOS
+   PREVIEW EDIT · Form grid
    ============================================================ */
-.import-event__dup {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 6px;
-  padding: 2px 7px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  border-radius: 999px;
-  background: color-mix(in srgb, #f59e0b 22%, transparent);
-  color: #d97706;
-  text-transform: uppercase;
+.form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
-.import-event__dup.is-decided {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
+.form__grid .form__label { margin-top: 8px; }
+.form__grid small {
+  font-size: 10px;
+  opacity: .65;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 
-.import-event__dup-actions {
-  position: absolute;
-  bottom: 10px;
-  left: 64px;
-  right: 14px;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.dup-btn {
-  flex: 1;
-  min-width: 68px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-2);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all .12s ease;
-}
-.dup-btn:hover { background: var(--surface-2); color: var(--text); }
-.dup-btn:active { transform: scale(.96); }
-.dup-btn.is-active {
-  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
-  border-color: var(--accent);
-  color: var(--accent);
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 /* ============================================================
@@ -1804,6 +1499,86 @@ body.is-standalone .topbar {
   letter-spacing: .1em;
   color: var(--muted);
   font-weight: 600;
+}
+
+/* ============================================================
+   DUPLICADOS
+   ============================================================ */
+.import-event.is-dup {
+  border-color: color-mix(in srgb, #f59e0b 55%, var(--border));
+}
+.import-event__dup {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border-radius: 999px;
+  background: color-mix(in srgb, #f59e0b 22%, transparent);
+  color: #d97706;
+  text-transform: uppercase;
+}
+.import-event__dup.is-decided {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.import-event__dup-actions {
+  position: absolute;
+  bottom: 10px;
+  left: 64px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dup-btn {
+  flex: 1;
+  min-width: 68px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .12s ease;
+}
+.dup-btn:hover { background: var(--surface-2); color: var(--text); }
+.dup-btn:active { transform: scale(.96); }
+.dup-btn.is-active {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+
+/* ============================================================
+   CAMERA BUTTON
+   ============================================================ */
+.btn--camera {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: 11px 16px;
+  font-size: 13.5px;
+  margin-top: -4px;
+}
+.btn--camera:hover {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.btn--camera:active { transform: scale(.98); }
+.btn--camera svg {
+  width: 17px;
+  height: 17px;
+  color: var(--accent);
 }
 
 /* ============================================================
@@ -1961,6 +1736,9 @@ body.is-standalone .topbar {
 .share__status.is-offline .share__dot {
   background: #f59e0b;
 }
+@keyframes pulse {
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, #10b981 10%, transparent); }
+}
 
 /* ============================================================
    NOTIFICACIONES
@@ -2082,6 +1860,29 @@ body.is-standalone .topbar {
 }
 .switch input:checked + .switch__track .switch__thumb {
   transform: translateX(18px);
+}
+
+/* ---------- Bell del modal en el topbar ---------- */
+.iconbtn--notif-on {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  color: var(--accent);
+}
+.iconbtn--notif-on svg { color: var(--accent); }
+
+/* ---------- Indicador de recordatorio en eventos ---------- */
+.tl__reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  vertical-align: middle;
+  letter-spacing: .02em;
 }
 
 /* ============================================================
@@ -2350,7 +2151,7 @@ body.daymode-on .app {
 }
 
 /* ============================================================
-   WALLET REAL · grid + cards
+   WALLET REAL
    ============================================================ */
 
 .wallet-filters {
@@ -2590,7 +2391,6 @@ body.daymode-on .app {
   border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 12.5px;
-  flex-wrap: wrap;
 }
 .attach-item__icon {
   width: 28px; height: 28px;
@@ -2630,35 +2430,6 @@ body.daymode-on .app {
 }
 .attach-item__remove:hover { background: color-mix(in srgb, #ef4444 15%, transparent); color: #ef4444; }
 .attach-item__remove svg { width: 14px; height: 14px; }
-
-.attach-item__cat {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-2);
-  font: inherit;
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 4px 22px 4px 8px;
-  border-radius: 999px;
-  cursor: pointer;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238a8c92' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='m3 5 3 3 3-3'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 10px;
-  flex-shrink: 0;
-}
-.attach-item__cat:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.attach-item__cat:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  color: var(--text);
-}
 
 .attach__btn {
   display: flex;
@@ -2750,9 +2521,85 @@ body.daymode-on .app {
 .wcat__item.is-active .wcat__item-check { display: flex; }
 
 /* ============================================================
-   MULTI-VIAJE · trip list + emoji picker + actions
+   ADJUNTOS · Selector de categoría inline
+   ============================================================ */
+.attach-item {
+  flex-wrap: wrap;
+}
+.attach-item__cat {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 22px 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%238a8c92' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='m3 5 3 3 3-3'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px;
+  flex-shrink: 0;
+}
+.attach-item__cat:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.attach-item__cat:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  color: var(--text);
+}
+
+/* ============================================================
+   MULTI-VIAJE
    ============================================================ */
 
+.topbar__trip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  margin: -6px -8px;
+  border-radius: 12px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: background .15s ease;
+}
+.topbar__trip:hover { background: var(--surface-2); }
+.topbar__trip:active { transform: scale(.98); }
+.topbar__trip-text { min-width: 0; flex: 1; }
+.topbar__chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform .2s ease;
+}
+.topbar__trip:hover .topbar__chevron { color: var(--text-2); transform: translateY(1px); }
+
+.topbar__flag {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  background: var(--surface-2);
+  flex-shrink: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+.topbar__flag span { display: block; }
+
+/* ---------- Lista de viajes ---------- */
 .trips-list {
   display: flex;
   flex-direction: column;
@@ -2868,6 +2715,7 @@ body.daymode-on .app {
 .trips-new:active { transform: scale(.99); }
 .trips-new svg { width: 18px; height: 18px; }
 
+/* ---------- Emoji picker ---------- */
 .emoji-picker {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -2903,6 +2751,57 @@ body.daymode-on .app {
   color: var(--muted);
 }
 
+/* ---------- Checkbox ---------- */
+.form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-top: 8px;
+  user-select: none;
+}
+.form__checkbox input { display: none; }
+.form__checkbox-box {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  transition: all .15s ease;
+}
+.form__checkbox input:checked + .form__checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.form__checkbox input:checked + .form__checkbox-box::after {
+  content: '';
+  width: 10px; height: 6px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+/* ---------- Trip actions ---------- */
+.modal__sheet--compact {
+  max-width: 420px;
+  padding-bottom: calc(20px + var(--safe-bottom));
+}
+.modal__compact-title {
+  margin: 0 0 16px;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  text-align: center;
+}
+
 .trip-actions {
   display: flex;
   flex-direction: column;
@@ -2933,211 +2832,171 @@ body.daymode-on .app {
 .trip-action--danger:hover { background: color-mix(in srgb, #ef4444 10%, transparent); }
 .trip-action--danger svg { color: #ef4444; }
 
+/* ---------- Empty state actions ---------- */
+.empty__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.empty__actions .btn { flex: 0 0 auto; min-width: 140px; }
+
+.empty__hint {
+  margin-top: 16px !important;
+  font-size: 12px !important;
+  color: var(--muted) !important;
+  font-style: italic;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
 /* ============================================================
-   Reduced motion
+   TOPBAR RESPONSIVE · mobile 2 filas + safe area Android
    ============================================================ */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+
+/* Espacio extra arriba en modo PWA instalada (Android MIUI no respeta safe-area) */
+body.is-standalone .topbar {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 28px);
+}
+
+@media (max-width: 440px) {
+  /* Topbar en 2 filas: viaje arriba, acciones abajo */
+  .topbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 8px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 18px);
+    padding-bottom: 10px;
+  }
+
+  body.is-standalone .topbar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 32px);
+  }
+
+  .topbar__trip {
+    flex: 1 1 100%;
+    padding: 6px 10px;
+    margin: -6px -10px;
+    border-radius: 14px;
+    background: var(--surface-2);
+    min-width: 0;
+  }
+  .topbar__trip:hover { background: var(--surface-3); }
+
+  .topbar__flag {
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+  }
+
+  .topbar__title {
+    font-size: 16px;
+    max-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar__chevron {
+    width: 16px;
+    height: 16px;
+  }
+
+  .topbar__actions {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 4px;
+  }
+
+  .topbar__actions .iconbtn {
+    flex: 1;
+    max-width: 76px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .topbar__actions .iconbtn svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar__title { font-size: 15px; }
+  .topbar__actions .iconbtn { max-width: 66px; height: 40px; }
+  .topbar__actions .iconbtn svg { width: 18px; height: 18px; }
+}
+
+/* ============================================================
+   MODALES · respetar safe area + scroll interno en mobile
+   ============================================================ */
+@media (max-width: 520px) {
+  .modal__sheet {
+    max-height: 94dvh;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px) + 8px);
   }
 }
 
 /* ============================================================
-   RANGE PICKER · tipo Airbnb
+   Banners · alejar del status bar en Android PWA
    ============================================================ */
-
-.form__input--date-range {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1.5px solid transparent;
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 15px;
-  font-family: inherit;
-  transition: border-color .15s ease, background .15s ease;
-  width: 100%;
+body.is-standalone .banner {
+  top: calc(env(safe-area-inset-top, 0px) + 28px);
 }
-.form__input--date-range:hover {
-  background: var(--surface-3);
-}
-.form__input--date-range:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  background: var(--surface);
-}
-.form__input--date-range svg {
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.form__input--date-range #tcDateRangeLabel {
-  color: var(--text);
-  font-weight: 500;
-}
-.form__input--date-range.is-empty #tcDateRangeLabel {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.range-picker { padding: 4px 0 0; }
-
-.range-picker__nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.range-picker__month {
-  font-family: var(--font-serif);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -.01em;
-  color: var(--text);
-}
-
-.range-picker__navbtn {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: var(--surface-2);
-  color: var(--text-2);
-  display: grid; place-items: center;
-  cursor: pointer;
-  transition: background .15s ease, transform .12s ease;
-}
-.range-picker__navbtn:hover { background: var(--surface-3); color: var(--text); }
-.range-picker__navbtn:active { transform: scale(.92); }
-.range-picker__navbtn svg { width: 16px; height: 16px; }
-.range-picker__navbtn#rpPrev svg { transform: rotate(180deg); }
-
-.range-picker__weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
-  padding: 0 2px;
-}
-.range-picker__weekdays span {
-  text-align: center;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.range-picker__grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 16px;
-}
-
-.range-picker__day {
-  aspect-ratio: 1;
-  border: none;
-  background: transparent;
-  border-radius: 10px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  transition: background .12s ease, color .12s ease, transform .1s ease;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  font-variant-numeric: tabular-nums;
-  position: relative;
-}
-.range-picker__day:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-.range-picker__day:active:not(:disabled) { transform: scale(.92); }
-
-.range-picker__day.is-outside {
-  color: var(--muted);
-  opacity: .35;
-  cursor: default;
-}
-
-.range-picker__day.is-today {
-  color: var(--accent);
-  font-weight: 700;
-}
-.range-picker__day.is-today::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.range-picker__day.is-selected {
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-}
-.range-picker__day.is-selected:hover { background: var(--accent); }
-.range-picker__day.is-selected.is-today { color: #fff; }
-.range-picker__day.is-selected.is-today::after { background: #fff; }
-
-.range-picker__day.is-between {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--text);
-  border-radius: 0;
-}
-.range-picker__day.is-start {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.range-picker__day.is-end {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-}
-.range-picker__day.is-start.is-end {
-  border-radius: 10px;
-}
-
-.range-picker__summary {
-  text-align: center;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  background: var(--surface-2);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
-  letter-spacing: -.01em;
-}
-
-.range-picker__actions {
-  display: flex;
-  gap: 10px;
-}
-.range-picker__actions .btn { flex: 1; }
 
 /* ============================================================
-   BANNER · botón ghost "Ya la instalé"
+   INSTALL BANNER · movido al bottom para no tapar el topbar
    ============================================================ */
-.banner__btn--ghost {
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
+.banner--install {
+  top: auto;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 14px);
+  animation: bannerInBottom .35s cubic-bezier(.2,.9,.3,1) both;
 }
-.banner__btn--ghost:hover {
-  color: var(--text);
-  background: var(--surface-2);
+
+@keyframes bannerInBottom {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Que el banner de offline se siga viendo arriba */
+.banner--offline {
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+}
+
+/* Robustez del trip selector en mobile */
+.topbar__trip {
+  min-height: 44px;
+  max-width: 100%;
+}
+
+.topbar__actions {
+  min-height: 42px;
+}
+
+/* En mobile, asegurar 2 filas ordenadas */
+@media (max-width: 440px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .topbar__trip,
+  .topbar__actions {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .topbar__actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .topbar__actions .iconbtn {
+    width: 100%;
+    max-width: none;
+    height: 44px;
+  }
 }

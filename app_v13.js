@@ -1,7 +1,7 @@
 /* ============================================================
    OhMyGoch Trip OS · app.js
    Multi-viaje + Import Mágico + Sync + Notif + Wallet + Día Activo
-   + Range Picker + PWA v2.7.0
+   + Range Picker
    ============================================================ */
 
 import { analyze, analyzeMulti, PROVIDERS, EXAMPLES } from './parser.js';
@@ -2650,16 +2650,12 @@ async function registerSW() {
 }
 
 /* ============================================================
-   PWA · Install · con flag global que mata el banner
+   PWA · Install · detección robusta
    ============================================================ */
 let deferredPrompt = null;
 const installBanner = document.getElementById('installBanner');
 const installBtn = document.getElementById('installBtn');
 const installClose = document.getElementById('installClose');
-const installAlreadyBtn = document.getElementById('installAlreadyBtn');
-
-// 🔥 Flag global en memoria: si está true, NUNCA más se muestra el banner
-let INSTALL_BANNER_KILLED = false;
 
 function isPWAInstalled() {
   try {
@@ -2678,94 +2674,54 @@ function isPWAInstalled() {
 
 function markInstalled() {
   localStorage.setItem('ohmygoch_installed', '1');
-  INSTALL_BANNER_KILLED = true;
   installBanner.hidden = true;
   document.body.classList.add('is-standalone');
-  console.log('🔒 Banner matado permanentemente');
-}
-
-function killInstallBanner() {
-  INSTALL_BANNER_KILLED = true;
-  installBanner.hidden = true;
-  deferredPrompt = null;
-  console.log('🔒 Banner matado por acción del usuario');
 }
 
 function applyStandaloneClass() {
   const on = isPWAInstalled();
   document.body.classList.toggle('is-standalone', on);
-  if (on) markInstalled();
+  if (on) installBanner.hidden = true;
   return on;
 }
 
-// Si ya está instalada → matar banner desde el arranque
 if (isPWAInstalled()) markInstalled();
-if (localStorage.getItem('ohmygoch_install_dismissed') === '1') INSTALL_BANNER_KILLED = true;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
 
-  // ✅ Si el banner ya fue matado, ignorar TODO
-  if (INSTALL_BANNER_KILLED) {
-    console.log('📦 beforeinstallprompt ignorado (banner matado)');
+  if (isPWAInstalled()) {
+    deferredPrompt = null;
+    installBanner.hidden = true;
     return;
   }
 
-  if (isPWAInstalled()) {
-    markInstalled();
+  if (localStorage.getItem('ohmygoch_install_dismissed') === '1') {
+    deferredPrompt = null;
     return;
   }
 
   deferredPrompt = e;
   installBanner.hidden = false;
-  console.log('📦 Banner mostrado');
 });
 
 installBtn?.addEventListener('click', async () => {
-  if (INSTALL_BANNER_KILLED) return;
-
-  if (isPWAInstalled()) {
-    markInstalled();
-    return;
-  }
-
-  if (!deferredPrompt) {
-    alert(
-      '📲 Para instalar la app:\n\n' +
-      '1. Tocá el menú ⋮ de Chrome (arriba a la derecha)\n' +
-      '2. Elegí "Instalar aplicación" o "Añadir a pantalla de inicio"\n' +
-      '3. Confirmá'
-    );
-    return;
-  }
-
+  if (!deferredPrompt) return;
   try {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
       markInstalled();
       toast('¡Instalada! 🎉');
-    } else {
-      killInstallBanner();
-      toast('Instalación cancelada');
     }
-  } catch (err) {
-    console.error(err);
-    killInstallBanner();
-  }
+  } catch {}
   deferredPrompt = null;
-});
-
-installAlreadyBtn?.addEventListener('click', () => {
-  localStorage.setItem('ohmygoch_installed', '1');
-  killInstallBanner();
-  document.body.classList.add('is-standalone');
-  toast('✓ Banner silenciado para siempre');
+  installBanner.hidden = true;
 });
 
 installClose?.addEventListener('click', () => {
+  installBanner.hidden = true;
   localStorage.setItem('ohmygoch_install_dismissed', '1');
-  killInstallBanner();
 });
 
 window.addEventListener('appinstalled', () => {
@@ -2784,27 +2740,11 @@ try {
 } catch {}
 
 /* ============================================================
-   PWA · Online/Offline · ping real a recurso propio
+   PWA · Online/Offline · versión simple y confiable
    ============================================================ */
 const offlineBanner = document.getElementById('offlineBanner');
+let offlineConfirmTimer = null;
 let isConfirmedOffline = false;
-let checkInFlight = false;
-
-async function pingSelf() {
-  try {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch('./index.html?_=' + Date.now(), {
-      method: 'HEAD',
-      cache: 'no-store',
-      signal: ctrl.signal,
-    });
-    clearTimeout(timeout);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 function setOffline(offline) {
   if (offline === isConfirmedOffline) return;
@@ -2816,37 +2756,27 @@ function setOffline(offline) {
   console.log(offline ? '📴 Offline confirmado' : '📶 Online confirmado');
 }
 
-async function checkConnectivity() {
-  if (checkInFlight) return;
-  checkInFlight = true;
-
-  try {
-    if (navigator.onLine) {
-      setOffline(false);
-      return;
-    }
-    const alive = await pingSelf();
-    setOffline(!alive);
-  } finally {
-    checkInFlight = false;
-  }
-}
-
-setTimeout(checkConnectivity, 1500);
-setInterval(checkConnectivity, 30000);
+setOffline(!navigator.onLine);
 
 window.addEventListener('online', () => {
+  clearTimeout(offlineConfirmTimer);
   setOffline(false);
-  setTimeout(checkConnectivity, 2000);
 });
 
 window.addEventListener('offline', () => {
-  setTimeout(checkConnectivity, 3000);
+  clearTimeout(offlineConfirmTimer);
+  offlineConfirmTimer = setTimeout(() => {
+    if (!navigator.onLine) {
+      setOffline(true);
+    }
+  }, 3000);
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    setTimeout(checkConnectivity, 500);
+    if (navigator.onLine && isConfirmedOffline) {
+      setOffline(false);
+    }
   }
 });
 
