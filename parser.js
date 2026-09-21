@@ -449,11 +449,13 @@ export function analyze(text, forced = 'auto') {
   }
 
   // Fallback: probar todos y quedarse con el que más eventos detectó
-  const results = order.map(k => PROVIDERS[k].parse(text));
-  results.sort((a, b) => b.events.length - a.events.length);
-  if (results[0]?.events?.length) return results[0];
+  //const results = order.map(k => PROVIDERS[k].parse(text));
+  //results.sort((a, b) => b.events.length - a.events.length);
+  //if (results[0]?.events?.length) return results[0];
 
-  // Último recurso: parser genérico
+    // 2. Fallback genérico — NO probamos todos los proveedores,
+  //    porque los parseadores permisivos (car) generan eventos
+  //    con cualquier texto que contenga una fecha.
   return parseGeneric(text);
 }
 

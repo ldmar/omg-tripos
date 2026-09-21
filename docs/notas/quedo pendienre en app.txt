@@ -1,0 +1,34 @@
+quedo pendienre en app.js 
+Archivos afectados (todas tienen el mismo patrón):
+
+closeTripsListModal / openTripsListModal
+
+closeTripCreateModal / openTripCreateModal
+
+closeTripActions / openTripActions
+
+closeTripRename / openTripRename
+
+closeImport / openImport
+
+closePreviewEdit / openPreviewEdit
+
+closeShare / openShare
+
+closeNotifModal / openNotifModal
+
+closeViewer / openViewer
+
+closeRangePicker / openRangePicker
+
+closeWalletCatModal / openWalletCatModal
+
+Búsqueda y reemplazo con sed o a mano. Son ~20 sitios.
+
+Bonus: el inert en el HTML estático. Agregá inert a los modales directamente en index.html, así arrancan inertes (consistente con hidden):
+
+html
+<div class="modal" id="modal" inert hidden aria-hidden="true">
+<div class="modal" id="importModal" inert hidden aria-hidden="true">
+<!-- …y así con todos… -->
+Si no querés tocar los 11 divs, no hace falta: el primer openModalEl(el) va a hacer el.inert = false explícitamente.

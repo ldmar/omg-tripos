@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Generar íconos · OhMyGoch Trip OS</title>
+<style>
+  body { font: 14px system-ui; padding: 32px; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { color: #666; line-height: 1.5; }
+  button {
+    padding: 12px 24px; font: inherit; font-weight: 600; cursor: pointer;
+    background: #4f46e5; color: #fff; border: none; border-radius: 8px;
+  }
+  button:disabled { opacity: .5; cursor: wait; }
+  #log { margin-top: 16px; font-family: ui-monospace, monospace; font-size: 12px; color: #444; }
+  #preview { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; align-items: flex-end; }
+  #preview img { border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+</style>
+</head>
+<body>
+
+<h1>Generar íconos</h1>
+<p>
+  Click en <strong>Generar</strong>. Se descargan 8 PNGs.
+  Movelos a la carpeta <code>icons/</code> de tu proyecto.
+</p>
+
+<button id="go">Generar</button>
+<div id="log"></div>
+<div id="preview"></div>
+
+<script>
+const SIZES = [
+  { size: 512, name: 'icon-512.png',          purpose: 'any'      },
+  { size: 192, name: 'icon-192.png',          purpose: 'any'      },
+  { size: 512, name: 'maskable-512.png',      purpose: 'maskable' },
+  { size: 192, name: 'maskable-192.png',      purpose: 'maskable' },
+  { size: 180, name: 'apple-touch-icon.png',  purpose: 'any'      },
+  { size: 32,  name: 'favicon-32.png',        purpose: 'any'      },
+  { size: 16,  name: 'favicon-16.png',        purpose: 'any'      },
+  { size: 256, name: 'screenshot-today.png',  purpose: 'any'      },
+];
+
+const MASKABLE_SAFE_ZONE = 0.8;   // contenido dentro del 80% central
+
+async function loadSvg() {
+  const res = await fetch('/assets/icon.svg');
+  if (!res.ok) throw new Error('No pude leer assets/icon.svg. Serví la carpeta con un server estático.');
+  return res.text();
+}
+
+function svgToDataUrl(svg, size) {
+  const sized = svg.replace(
+    /<svg([^>]*)>/,
+    `<svg$1 width="${size}" height="${size}">`
+  );
+  const blob = new Blob([sized], { type: 'image/svg+xml' });
+  return URL.createObjectURL(blob);
+}
+
+async function renderIcon(svgSource, size, maskable) {
+  return new Promise((resolve, reject) => {
+    const url = svgToDataUrl(svgSource, size);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      if (maskable) {
+        // Para maskable: fondo lleno y contenido reducido al safe zone
+        const grad = ctx.createLinearGradient(0, 0, size, size);
+        grad.addColorStop(0, '#4f46e5');
+        grad.addColorStop(1, '#8b5cf6');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+
+        const inner = size * MASKABLE_SAFE_ZONE;
+        const offset = (size - inner) / 2;
+        ctx.drawImage(img, offset, offset, inner, inner);
+      } else {
+        ctx.drawImage(img, 0, 0, size, size);
+      }
+
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => resolve(b), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG inválido')); };
+    img.src = url;
+  });
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+document.getElementById('go').addEventListener('click', async () => {
+  const btn = document.getElementById('go');
+  const log = document.getElementById('log');
+  const preview = document.getElementById('preview');
+  btn.disabled = true;
+  log.textContent = '';
+  preview.innerHTML = '';
+
+  try {
+    const svg = await loadSvg();
+
+    for (const { size, name, purpose } of SIZES) {
+      log.textContent += `Generando ${name}…\n`;
+      const maskable = purpose === 'maskable';
+      const blob = await renderIcon(svg, size, maskable);
+      download(blob, name);
+
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      img.width = size > 192 ? 96 : size;
+      img.height = size > 192 ? 96 : size;
+      img.title = name;
+      preview.appendChild(img);
+
+      await new Promise(r => setTimeout(r, 120));   // espaciar descargas
+    }
+
+    log.textContent += '\n✅ Listo. Movelos a icons/';
+  } catch (err) {
+    log.textContent += '\n❌ ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

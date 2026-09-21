@@ -4,13 +4,14 @@
    ============================================================ */
 
 const DB_NAME = 'omg-tripos';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 const OLD_DB_NAME = 'ohmygoch';
 const OLD_WALLET_DB = 'ohmygoch-wallet';
 const NEW_WALLET_DB = 'omg-tripos-wallet';
 const STORE_EVENTS = 'events';
 const STORE_META = 'meta';
 const STORE_TRIPS = 'trips';
+const STORE_TRAVELERS = 'travelers';
 const META_ACTIVE = 'activeTripId';
 const META_MIGRATED = 'migration_v2_done';
 
@@ -22,30 +23,75 @@ function db() {
   if (_db) return _db;
   _db = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+
     req.onupgradeneeded = (e) => {
       const idb = req.result;
+      const oldVersion = e.oldVersion;
 
-      if (!idb.objectStoreNames.contains(STORE_EVENTS)) {
-        const s = idb.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
-        s.createIndex('tripId', 'tripId');
-        s.createIndex('startAt', 'startAt');
-      } else {
-        const eventsStore = e.target.transaction.objectStore(STORE_EVENTS);
-        if (!eventsStore.indexNames.contains('tripId')) {
-          eventsStore.createIndex('tripId', 'tripId');
+      // v1: events + meta + trips
+      if (oldVersion < 1) {
+        if (!idb.objectStoreNames.contains(STORE_EVENTS)) {
+          const s = idb.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
+          s.createIndex('tripId', 'tripId');
+          s.createIndex('startAt', 'startAt');
+        }
+        if (!idb.objectStoreNames.contains(STORE_META)) {
+          idb.createObjectStore(STORE_META, { keyPath: 'key' });
+        }
+        if (!idb.objectStoreNames.contains(STORE_TRIPS)) {
+          idb.createObjectStore(STORE_TRIPS, { keyPath: 'id' });
         }
       }
 
-      if (!idb.objectStoreNames.contains(STORE_META)) {
-        idb.createObjectStore(STORE_META, { keyPath: 'key' });
+      // v1.x: agregar índice tripId si falta (idempotente)
+      if (idb.objectStoreNames.contains(STORE_EVENTS)) {
+        const eventsStore = req.transaction.objectStore(STORE_EVENTS);
+        if (!eventsStore.indexNames.contains('tripId')) {
+          eventsStore.createIndex('tripId', 'tripId');
+        }
+        if (!eventsStore.indexNames.contains('startAt')) {
+          eventsStore.createIndex('startAt', 'startAt');
+        }
       }
 
-      if (!idb.objectStoreNames.contains(STORE_TRIPS)) {
-        idb.createObjectStore(STORE_TRIPS, { keyPath: 'id' });
+      // v2: travelers
+      if (!idb.objectStoreNames.contains(STORE_TRAVELERS)) {
+        const t = idb.createObjectStore(STORE_TRAVELERS, { keyPath: 'id' });
+        t.createIndex('tripId', 'tripId');
+        console.log('[trips] store "travelers" creado');
       }
+
+      console.log(`[trips] DB upgrade v${oldVersion} → v${DB_VERSION}`);
     };
-    req.onsuccess = () => resolve(req.result);
+
+    req.onsuccess = () => {
+      const idb = req.result;
+
+      // Liberar conexión si otra pestaña quiere upgradear
+      idb.onversionchange = () => {
+        console.log('[trips] versionchange · cerrando conexión');
+        idb.close();
+        _db = null;
+      };
+
+      // Verificación post-open
+      const expected = [STORE_EVENTS, STORE_META, STORE_TRIPS, STORE_TRAVELERS];
+      const missing = expected.filter(s => !idb.objectStoreNames.contains(s));
+      if (missing.length) {
+        console.error('[trips] stores faltantes tras open:', missing);
+        idb.close();
+        _db = null;
+        return reject(new Error(`IDB inconsistente: faltan ${missing.join(', ')}`));
+      }
+
+      resolve(idb);
+    };
+
     req.onerror = () => reject(req.error);
+
+    req.onblocked = () => {
+      console.warn('[trips] IDB upgrade bloqueado. Cerrá todas las demás pestañas de la app.');
+    };
   });
   return _db;
 }
@@ -78,7 +124,7 @@ export const idbPut    = (store, val) => tx(store, 'readwrite', s => s.put(val))
 export const idbDelete = (store, key) => tx(store, 'readwrite', s => s.delete(key));
 export const idbClear  = (store)      => tx(store, 'readwrite', s => s.clear());
 
-export const STORES = { EVENTS: STORE_EVENTS, META: STORE_META, TRIPS: STORE_TRIPS };
+export const STORES = { EVENTS: STORE_EVENTS, META: STORE_META, TRIPS: STORE_TRIPS, TRAVELERS: STORE_TRAVELERS, };
 
 /* ============================================================
    Utils
@@ -160,6 +206,8 @@ export async function deleteTrip(id) {
     console.warn('No se pudieron borrar archivos de wallet:', e);
   }
 
+  const travelers = await getTravelersByTrip(id);
+  for (const tr of travelers) await idbDelete(STORE_TRAVELERS, tr.id);
   await idbDelete(STORE_TRIPS, id);
 
   const activeMeta = await idbGet(STORE_META, META_ACTIVE);
@@ -197,6 +245,42 @@ export async function countTripData(tripId) {
   let files = 0;
   try { files = await countTripFiles(tripId); } catch {}
   return { events: events.length, files };
+}
+
+/* ============================================================
+   Travelers
+   ============================================================ */
+export async function getTravelersByTrip(tripId) {
+  if (!tripId) return [];
+  const idb = await db();
+
+  // Guard: el store puede no existir si la DB quedó en v1
+  if (!idb.objectStoreNames.contains(STORE_TRAVELERS)) {
+    console.warn('[trips] store "travelers" no existe (DB en v1). Recargá con todas las demás pestañas cerradas.');
+    return [];
+  }
+
+  return new Promise((resolve, reject) => {
+    const t = idb.transaction(STORE_TRAVELERS, 'readonly');
+    const idx = t.objectStore(STORE_TRAVELERS).index('tripId');
+    const req = idx.getAll(tripId);
+    req.onsuccess = () => {
+      const list = (req.result || []).sort((a, b) => {
+        if (a.role === 'organizer' && b.role !== 'organizer') return -1;
+        if (b.role === 'organizer' && a.role !== 'organizer') return 1;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+      resolve(list);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getTraveler(id) {
+  if (!id) return null;
+  const idb = await db();
+  if (!idb.objectStoreNames.contains(STORE_TRAVELERS)) return null;
+  return (await idbGet(STORE_TRAVELERS, id)) || null;
 }
 
 /* ============================================================
@@ -379,21 +463,62 @@ export async function migrateFromOldDb() {
    Init
    ============================================================ */
 export async function ensureInitialized() {
-  await migrateFromOldDb();
+  try {
+    await migrateFromOldDb();
 
-  const trips = await listTrips();
-  if (!trips.length) {
-    const fresh = await createTrip({
-      title: 'Mi primer viaje',
-      flag: '🌍',
-      travelers: 1,
-    });
-    await setActiveTrip(fresh.id);
-  }
+    const trips = await listTrips();
+    if (!trips.length) {
+      const fresh = await createTrip({
+        title: 'Mi primer viaje',
+        flag: '🌍',
+        travelers: 1,
+      });
+      await setActiveTrip(fresh.id);
+    }
 
-  const active = await getActiveTrip();
-  if (!active) {
-    const list = await listTrips();
-    if (list.length) await setActiveTrip(list[0].id);
+    const active = await getActiveTrip();
+    if (!active) {
+      const list = await listTrips();
+      if (list.length) await setActiveTrip(list[0].id);
+    }
+  } catch (err) {
+    console.error('[trips] ensureInitialized falló:', err);
+    // Si es error de IDB inconsistente, no hay mucho que hacer acá.
+    // El boot debe fallar visiblemente para que el usuario sepa.
+    throw err;
   }
+}
+
+
+import * as vault from './vault.js';
+import * as crypto from './crypto.js';
+
+/**
+ * Devuelve el perfil descifrado de un viajero.
+ * @param {object} traveler  Registro con { id, tripId, encryptedProfile }
+ * @returns {Promise<object|null>}
+ */
+export async function getTravelerProfile(traveler) {
+  if (!traveler?.encryptedProfile) return traveler || null;
+  if (!vault.isUnlocked()) throw new Error('Vault locked');
+  const key = await vault.getTripKey(traveler.tripId);
+  if (!key) throw new Error('Sin data key');
+  const json = await crypto.decryptString(key, traveler.encryptedProfile, `trav:${traveler.id}`);
+  return JSON.parse(json);
+}
+
+/**
+ * Devuelve una copia del viajero con el perfil cifrado.
+ * @param {object} traveler  { id, tripId, name, role, color, ... }
+ * @param {object} profile   Datos sensibles (documento, contacto emergencia…)
+ */
+export async function setTravelerProfile(traveler, profile) {
+  if (!vault.isUnlocked()) throw new Error('Vault locked');
+  const key = await vault.getTripKey(traveler.tripId, { create: true });
+  const encryptedProfile = await crypto.encryptString(
+    key, JSON.stringify(profile), `trav:${traveler.id}`
+  );
+  // Los campos sensibles NUNCA van al registro plano:
+  const { document, emergencyContact, ...publicFields } = traveler;
+  return { ...publicFields, encryptedProfile };
 }

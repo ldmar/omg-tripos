@@ -1,10 +1,10 @@
 /* ============================================================
    OhMyGoch Trip OS · Service Worker
-   v2.7.0 · network-first para assets críticos
+   v3.0.4 · network-first crítico + cache-first assets + SWR remoto
    ============================================================ */
 
-const VERSION = 'OMGTripOS-v2.7.1';
-const CORE = 'core-' + VERSION;
+const VERSION = 'OMGTripOS-v3.0.5';
+const CORE    = 'core-' + VERSION;
 const RUNTIME = 'runtime-' + VERSION;
 
 // Assets críticos → SIEMPRE frescos (network-first)
@@ -13,25 +13,48 @@ const FRESH_ASSETS = [
   './index.html',
   './styles.css',
   './app.js',
+  './manifest.json',
+
+  // Módulos core
   './trips.js',
   './parser.js',
   './sync.js',
+  './crypto.js',
+  './vault.js',
+  './crdt.js',
+  './settings.js',
+  './travelers.js',
+  './freetour.js', 
+
+  // Módulos UI
+  './ui/bus.js',
+  './ui/today.js',
+  './ui/wallet.js',
+  './ui/event-modal.js',
+  './ui/chat.js',
+  './ui/map.js',
+  './ui/management.js',
+  './ui/freetour.js', 
 ];
 
-// Assets de relleno → cache-first
+// Assets de relleno → cache-first (lazy, no críticos al arranque)
 const CORE_ASSETS = [
   './pdf-import.js',
   './ocr-import.js',
   './notifications.js',
+  './alerts.js',
   './daymode.js',
   './wallet.js',
+  './chat.js',
   './offline.html',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CORE)
-      .then(cache => cache.addAll([...FRESH_ASSETS, ...CORE_ASSETS]).catch(() => null))
+      .then(cache => cache.addAll([...FRESH_ASSETS, ...CORE_ASSETS]).catch(err => {
+        console.warn('[sw] addAll parcial:', err);
+      }))
       .then(() => self.skipWaiting())
   );
 });
