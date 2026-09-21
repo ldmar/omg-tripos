@@ -14,15 +14,6 @@
 
 <title>OhMyGoch Trip OS</title>
 
-<script type="importmap">
-{
-  "imports": {
-    "yjs": "https://cdn.jsdelivr.net/npm/yjs-bundle@0.1.6/dist/yjs-bundle.esm.js",
-    "y-webrtc": "https://cdn.jsdelivr.net/npm/yjs-bundle@0.1.6/dist/yjs-bundle.esm.js",
-    "y-indexeddb": "https://cdn.jsdelivr.net/npm/yjs-bundle@0.1.6/dist/yjs-bundle.esm.js"
-  }
-}
-</script>
 
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
@@ -30,8 +21,15 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600;700&display=swap"
+      media="print" onload="this.media='all'" />
+<noscript>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600;700&display=swap" />
+</noscript>
 </head>
 <body>
 
@@ -67,6 +65,9 @@
   <symbol id="i-qr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v3M14 21h3M18 21h3"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
   <symbol id="i-suitcase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3"/><path d="M9 20v1M15 20v1"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+<symbol id="i-walk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="m9 22 3-7 3 7"/><path d="M6.5 12 12 10l5.5 2"/><path d="M9 15h6"/></symbol>
 </svg>
 
 <div class="banner banner--offline" id="offlineBanner" hidden>
@@ -87,6 +88,20 @@
   </button>
 </div>
 
+<div class="lockscreen" id="lockscreen" hidden>
+  <div class="lockscreen__card">
+    <div class="lockscreen__icon">🔒</div>
+    <h2 id="lockTitle">Desbloqueá OhMyGoch</h2>
+    <p id="lockSub">Tus datos están cifrados en este dispositivo</p>
+    <input type="password" id="lockPin" inputmode="numeric"
+           autocomplete="off" placeholder="PIN o frase" />
+    <div class="lockscreen__strength" id="lockStrength" hidden></div>
+    <button class="btn btn--primary btn--lg" id="lockBtn">Entrar</button>
+    <p class="lockscreen__error" id="lockError" hidden></p>
+    <button class="lockscreen__skip" id="lockSkip">Configurar más tarde</button>
+  </div>
+</div>
+
 <div class="app">
 
   <header class="topbar">
@@ -101,8 +116,14 @@
       <svg class="topbar__chevron"><use href="#i-chevron-down"/></svg>
     </button>
     <div class="topbar__actions">
+      <button class="iconbtn" aria-label="Ajustes" id="settingsBtn">
+        <svg><use href="#i-settings"/></svg>
+      </button>
       <button class="iconbtn iconbtn--daymode" aria-label="Modo Día Activo" id="daymodeBtn" title="Modo Día Activo">
         <svg><use href="#i-play"/></svg>
+      </button>
+      <button class="iconbtn" aria-label="Buscar free tours" id="freetourOpenBtn" title="Free tours">
+        <svg><use href="#i-walk"/></svg>
       </button>
       <button class="iconbtn iconbtn--accent" aria-label="Importar reserva" id="importBtn">
         <svg><use href="#i-import"/></svg>
@@ -162,16 +183,20 @@
           <div class="empty__icon">🧭</div>
           <h4 id="emptyTitle">Sin eventos todavía</h4>
           <p id="emptyDesc">Tocá <strong>+</strong> para agregar un evento, o usá <strong>📥</strong> para importar tu reserva.</p>
-          <div class="empty__actions">
-            <button class="btn btn--primary" id="emptyImportBtn">
-              <svg><use href="#i-import"/></svg>
-              <span>Importar reserva</span>
-            </button>
-            <button class="btn btn--ghost" id="emptyCreateBtn">
-              <svg><use href="#i-plus"/></svg>
-              <span>Crear evento</span>
-            </button>
-          </div>
+        <div class="empty__actions">
+          <button class="btn btn--primary" id="emptyImportBtn">
+            <svg><use href="#i-import"/></svg>
+            <span>Importar reserva</span>
+          </button>
+          <button class="btn btn--ghost" id="emptyCreateBtn">
+            <svg><use href="#i-plus"/></svg>
+            <span>Crear evento</span>
+          </button>
+          <button class="btn btn--ghost" id="emptyFreetourBtn">
+            <svg><use href="#i-walk"/></svg>
+            <span>Buscar free tour</span>
+          </button>
+        </div>
           <p class="empty__hint">
             ¿Sabías que podés pegar el email de Booking y se arma solo?
           </p>
@@ -239,7 +264,9 @@
               <h4 id="sheetTitle">Mercado de San Miguel</h4>
               <p id="sheetMeta">Ahora · a 4 min a pie · €€</p>
             </div>
-            <button class="sheet__btn"><svg><use href="#i-chevron"/></svg></button>
+            <button class="sheet__btn" aria-label="Ver detalles">
+              <svg aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -281,29 +308,51 @@
 
     <section class="view" data-view="group">
       <div class="scroll">
-        <div class="section-head">
-          <h3>Viajeros</h3>
+      <div class="section-head">
+        <h3>Viajeros</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="ghostbtn" id="travelerAddBtn">+ Agregar</button>
           <button class="ghostbtn" id="groupInviteBtn">Invitar</button>
         </div>
-        <div class="people" id="peopleList">
-          <div class="person"><div class="avatar" style="--a:#f59e0b">V</div><p>Vos</p></div>
-          <div class="person"><div class="avatar" style="--a:#ec4899">A</div><p>Ana</p></div>
-          <div class="person"><div class="avatar" style="--a:#3b82f6">L</div><p>Lucas</p></div>
-          <div class="person"><div class="avatar" style="--a:#10b981">S</div><p>Sofía</p></div>
-        </div>
+      </div>
+
+      <div class="travelers-empty" id="travelersEmpty" hidden>
+        <p>Agregá a los viajeros para tener sus documentos y contactos de emergencia cifrados en el dispositivo.</p>
+      </div>
+
+      <div class="people" id="travelersList"></div>
         <div class="section-head"><h3>Gastos compartidos</h3><span class="tag tag--warn">Te deben €48</span></div>
         <ul class="expenses">
           <li><div class="expense__ico">🏨</div><div class="expense__body"><strong>Hotel Gran Vía</strong><small>Pagó Ana · dividido 4</small></div><div class="expense__amt">€620</div></li>
           <li><div class="expense__ico">🍽</div><div class="expense__body"><strong>Mercado San Miguel</strong><small>Pagó Vos · dividido 4</small></div><div class="expense__amt">€72</div></li>
           <li><div class="expense__ico">🚇</div><div class="expense__body"><strong>Metro turístico 10 viajes</strong><small>Pagó Lucas · dividido 4</small></div><div class="expense__amt">€28</div></li>
         </ul>
-        <div class="section-head"><h3>Chat del grupo</h3><span class="tag">3 nuevos</span></div>
-        <ul class="chat">
-          <li class="chat__me"><div class="bubble">Llegamos 11:30 al aeropuerto ✈️</div></li>
-          <li><div class="bubble bubble--other">Perfecto, llevo la reserva del hotel</div><small>Ana · 09:12</small></li>
-          <li><div class="bubble bubble--other">Reservé flamenco para las 22 🎭</div><small>Lucas · 09:40</small></li>
-        </ul>
-        <div class="spacer"></div>
+ <div class="section-head">
+  <h3>Chat del grupo</h3>
+  <span class="tag" id="chatCount">—</span>
+</div>
+
+<div class="chat-empty" id="chatEmpty">
+  <p>Sin mensajes todavía. Cuando tus compañeros se conecten, los mensajes viajan cifrados E2E.</p>
+</div>
+
+<ul class="chat" id="chatList"></ul>
+
+<div class="chat-input" id="chatInputBar" hidden>
+  <input
+    type="text"
+    id="chatInput"
+    placeholder="Escribí un mensaje…"
+    autocomplete="off"
+    maxlength="500"
+    aria-label="Mensaje"
+  />
+  <button id="chatSend" type="button" aria-label="Enviar">
+    <svg><use href="#i-send"/></svg>
+  </button>
+</div>
+
+<div class="spacer"></div>
       </div>
     </section>
 
@@ -936,6 +985,258 @@ Check-in: 5 de octubre de 2026.'"
       <svg><use href="#i-file"/></svg>
     </button>
   </footer>
+</div>
+
+<!-- ============================================================
+     MODAL · Ajustes
+     ============================================================ -->
+<div class="modal" id="settingsModal" inert hidden aria-hidden="true">
+  <div class="modal__backdrop" data-settings-close></div>
+  <div class="modal__sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal__handle"></div>
+
+    <header class="modal__head">
+      <h3 id="settingsTitle">⚙️ Ajustes</h3>
+      <button class="iconbtn iconbtn--s" data-settings-close aria-label="Cerrar">
+        <svg><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <!-- Seguridad -->
+    <div class="settings-section">
+      <h4 class="settings-section__title">Seguridad</h4>
+
+      <div class="settings-row">
+        <div class="settings-row__body">
+          <strong>Bloqueo automático</strong>
+          <small>Tras este tiempo sin actividad</small>
+        </div>
+      </div>
+      <div class="chips" id="autolockChips"></div>
+
+      <button type="button" class="trip-action" id="changePINBtn">
+        <svg><use href="#i-lock"/></svg>
+        <span>Cambiar PIN</span>
+      </button>
+
+      <button type="button" class="trip-action" id="lockNowBtn">
+        <svg><use href="#i-lock"/></svg>
+        <span>Bloquear ahora</span>
+      </button>
+    </div>
+
+    <!-- Backup -->
+    <div class="settings-section">
+      <h4 class="settings-section__title">Backup cifrado</h4>
+      <p class="settings-hint" id="lastBackupHint">Nunca se hizo un backup.</p>
+
+      <button type="button" class="trip-action" id="exportBackupBtn">
+        <svg><use href="#i-download"/></svg>
+        <span>Exportar backup (.omg)</span>
+      </button>
+
+      <button type="button" class="trip-action" id="importBackupBtn">
+        <svg><use href="#i-import"/></svg>
+        <span>Importar backup</span>
+      </button>
+      <input type="file" id="importBackupInput" accept=".omg,.json,application/json" hidden />
+    </div>
+
+    <!-- Datos -->
+    <div class="settings-section">
+      <h4 class="settings-section__title">Datos</h4>
+      <div class="settings-stats" id="storageStats">—</div>
+
+      <button type="button" class="trip-action trip-action--danger" id="wipeTripBtn">
+        <svg><use href="#i-trash"/></svg>
+        <span>Borrar viaje actual</span>
+      </button>
+
+      <button type="button" class="trip-action trip-action--danger" id="wipeAllBtn">
+        <svg><use href="#i-trash"/></svg>
+        <span>Borrar todo (wipe total)</span>
+      </button>
+    </div>
+
+    <!-- Sobre -->
+    <div class="settings-section">
+      <h4 class="settings-section__title">Sobre</h4>
+      <p class="settings-hint">
+        OhMyGoch Trip OS · v3.0<br>
+        Offline-first · cifrado en reposo · sin telemetría
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL · Cambiar PIN
+     ============================================================ -->
+<div class="modal" id="changePINModal" inert hidden aria-hidden="true">
+  <div class="modal__backdrop" data-changepin-close></div>
+  <div class="modal__sheet modal__sheet--compact" role="dialog" aria-modal="true" aria-labelledby="changePINTitle">
+    <div class="modal__handle"></div>
+
+    <header class="modal__head">
+      <h3 id="changePINTitle">Cambiar PIN</h3>
+      <button class="iconbtn iconbtn--s" data-changepin-close aria-label="Cerrar">
+        <svg><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <form class="form" id="changePINForm">
+      <label class="form__label" for="cpOld">PIN actual</label>
+      <input class="form__input" id="cpOld" type="password" required autocomplete="current-password" />
+
+      <label class="form__label" for="cpNew">PIN nuevo</label>
+      <input class="form__input" id="cpNew" type="password" required autocomplete="new-password" />
+      <div class="lockscreen__strength" id="cpStrength" hidden></div>
+
+      <label class="form__label" for="cpConfirm">Repetir PIN nuevo</label>
+      <input class="form__input" id="cpConfirm" type="password" required autocomplete="new-password" />
+
+      <p class="lockscreen__error" id="cpError" hidden></p>
+
+      <div class="form__actions">
+        <button type="button" class="btn btn--ghost" data-changepin-close>Cancelar</button>
+        <button type="submit" class="btn btn--primary" id="cpSubmit">Cambiar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL · Backup export (password prompt)
+     ============================================================ -->
+<div class="modal" id="backupPasswordModal" inert hidden aria-hidden="true">
+  <div class="modal__backdrop" data-bkp-close></div>
+  <div class="modal__sheet modal__sheet--compact" role="dialog" aria-modal="true" aria-labelledby="bkpTitle">
+    <div class="modal__handle"></div>
+
+    <header class="modal__head">
+      <h3 id="bkpTitle">Contraseña del backup</h3>
+      <button class="iconbtn iconbtn--s" data-bkp-close aria-label="Cerrar">
+        <svg><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <form class="form" id="backupPasswordForm">
+      <p class="settings-hint" id="bkpHint">
+        Elegí una contraseña para el archivo. La vas a necesitar para restaurarlo.
+        No se guarda en ningún lado.
+      </p>
+
+      <label class="form__label" for="bkpPass">Contraseña</label>
+      <input class="form__input" id="bkpPass" type="password" required autocomplete="new-password" minlength="8" />
+
+      <label class="form__label" for="bkpConfirm">Repetir</label>
+      <input class="form__input" id="bkpConfirm" type="password" required autocomplete="new-password" minlength="8" />
+
+      <p class="lockscreen__error" id="bkpError" hidden></p>
+
+      <div class="form__actions">
+        <button type="button" class="btn btn--ghost" data-bkp-close>Cancelar</button>
+        <button type="submit" class="btn btn--primary" id="bkpSubmit">Continuar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL · Traveler edit
+     ============================================================ -->
+<div class="modal" id="travelerModal" inert hidden aria-hidden="true">
+  <div class="modal__backdrop" data-trav-close></div>
+  <div class="modal__sheet" role="dialog" aria-modal="true" aria-labelledby="travTitle">
+    <div class="modal__handle"></div>
+
+    <header class="modal__head">
+      <h3 id="travTitle">Nuevo viajero</h3>
+      <button class="iconbtn iconbtn--s" data-trav-close aria-label="Cerrar">
+        <svg><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <form class="form" id="travelerForm">
+      <input type="hidden" id="travId" />
+
+      <label class="form__label" for="travName">Nombre</label>
+      <input class="form__input" id="travName" required maxlength="40" autocomplete="off" />
+
+      <label class="form__label">Rol</label>
+      <div class="chips" id="travRoles"></div>
+
+      <label class="form__label">Color</label>
+      <div class="color-picker" id="travColors"></div>
+
+      <details class="trav-sensitive">
+        <summary>Datos sensibles (cifrados)</summary>
+
+        <label class="form__label" for="travDoc">Documento / Pasaporte</label>
+        <input class="form__input" id="travDoc" autocomplete="off" placeholder="Ej: AA1234567" />
+
+        <label class="form__label" for="travEmerg">Contacto de emergencia</label>
+        <input class="form__input" id="travEmerg" autocomplete="off" placeholder="Ej: +54 9 11 5555 5555" />
+      </details>
+
+      <div class="form__actions">
+        <button type="button" class="btn btn--danger" id="travDeleteBtn" hidden>
+          <svg><use href="#i-trash"/></svg><span>Eliminar</span>
+        </button>
+        <button type="submit" class="btn btn--primary" id="travSaveBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL · Buscar free tours (GuruWalk)
+     ============================================================ -->
+<div class="modal" id="freetourModal" inert hidden aria-hidden="true">
+  <div class="modal__backdrop" data-freetour-close></div>
+  <div class="modal__sheet" role="dialog" aria-modal="true" aria-labelledby="ftTitle">
+    <div class="modal__handle"></div>
+
+    <header class="modal__head">
+      <h3 id="ftTitle">🚶 Free tours</h3>
+      <button class="iconbtn iconbtn--s" data-freetour-close aria-label="Cerrar">
+        <svg><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <!-- Vista 1: búsqueda -->
+    <div id="ftSearchView" class="ft-view">
+      <p class="settings-hint">
+        Buscamos en <strong>GuruWalk</strong> (1.000+ ciudades). Podés agregar cualquier free tour a tu itinerario; el punto de encuentro y el itinerario quedan guardados offline.
+      </p>
+
+      <label class="form__label" for="ftDestination">Ciudad</label>
+      <input class="form__input" id="ftDestination" placeholder="Ej: Madrid" autocomplete="off" />
+
+      <button class="btn btn--primary btn--lg" id="ftSearchBtn" type="button">
+        <svg><use href="#i-spark"/></svg>
+        <span>Buscar</span>
+      </button>
+
+      <p class="ft-disclaimer">
+        Los tours se reservan y pagan directamente en GuruWalk.
+        OhMyGoch sólo guarda la info para que la tengas offline.
+      </p>
+    </div>
+
+    <!-- Vista 2: resultados -->
+    <div id="ftResultsView" class="ft-view" hidden>
+      <button class="ghostbtn" id="ftBackBtn" type="button">← Buscar otra ciudad</button>
+      <h4 class="ft-results-head" id="ftResultsHead">—</h4>
+      <div id="ftResults" class="ft-results"></div>
+    </div>
+
+    <!-- Vista 3: detalle -->
+    <div id="ftDetailView" class="ft-view" hidden>
+      <button class="ghostbtn" id="ftBackBtnDetail" type="button">← Volver a resultados</button>     
+      <div id="ftDetailBody"></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast" hidden></div>
