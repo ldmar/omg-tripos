@@ -4,27 +4,40 @@
 
 import * as bus from './bus.js';
 import * as notif from '../notifications.js';
-import { TYPE_META, escapeHtml, fmtTime, relTime, fmtDateShort, isToday, call } from './bus.js';
+import {
+  TYPE_META, escapeHtml, fmtTime, relTime, fmtDateShort, isToday, call,
+  getMapsUrl,
+} from './bus.js';
 
 const { ctx } = bus;
 
+/* ============================================================
+   Init
+   ============================================================ */
 export function init() {
   document.getElementById('clearDoneBtn')?.addEventListener('click', clearDone);
+
   document.getElementById('nextCta')?.addEventListener('click', () => {
     const n = computeNext();
     if (n) call('openEventModal', n.id);
   });
+
   document.getElementById('emptyImportBtn')?.addEventListener('click', () => bus.emit('open-import'));
   document.getElementById('emptyCreateBtn')?.addEventListener('click', () => call('openEventModal'));
 }
 
+/* ============================================================
+   Render principal
+   ============================================================ */
 export function render() {
   renderHero();
   renderNext();
   renderTimeline();
 }
 
-/* ---------- Hero ---------- */
+/* ============================================================
+   Hero
+   ============================================================ */
 function computeDayNumber() {
   const trip = ctx.trip;
   if (!trip?.startDate) return null;
@@ -69,7 +82,9 @@ function renderHero() {
   document.getElementById('heroProgress').style.width = pct + '%';
 }
 
-/* ---------- Next ---------- */
+/* ============================================================
+   Next card
+   ============================================================ */
 function computeNext() {
   const now = Date.now();
   return ctx.events
@@ -87,7 +102,9 @@ function renderNext() {
   document.getElementById('nextPlace').textContent = n.place || 'Sin ubicación';
 }
 
-/* ---------- Timeline ---------- */
+/* ============================================================
+   Timeline
+   ============================================================ */
 function renderTimeline() {
   const ol = document.getElementById('timeline');
   const empty = document.getElementById('emptyState');
@@ -131,28 +148,75 @@ function renderTimeline() {
           <div class="tl__body">
             <h4>${escapeHtml(e.title)}${isLive ? '<span class="pill pill--live">Ahora</span>' : ''}${e.done ? '<span class="pill pill--done">Hecho</span>' : ''}${reminderBadge}</h4>
             ${e.notes ? `<p>${escapeHtml(e.notes)}</p>` : ''}
-            ${e.place ? `<p class="tl__place"><svg><use href="#i-pin"/></svg>${escapeHtml(e.place)}</p>` : ''}
+            ${renderPlaceLine(e)}
           </div>
         </div>
       </li>`;
   }).join('');
 
+  // Wire: toggle done
   ol.querySelectorAll('[data-toggle]').forEach(el => {
     el.addEventListener('click', ev => {
       ev.stopPropagation();
       call('toggleDone', el.dataset.toggle);
     });
   });
+
+  // Wire: abrir modal (excepto si el click fue en un link de Maps)
   ol.querySelectorAll('[data-edit]').forEach(el => {
-    el.addEventListener('click', () => call('openEventModal', el.dataset.edit));
+    el.addEventListener('click', (ev) => {
+      // Si el click fue en un link, no abrir el modal
+      if (ev.target.closest('a')) return;
+      call('openEventModal', el.dataset.edit);
+    });
   });
 }
 
-/* ---------- Clear done ---------- */
+/* ============================================================
+   Place line · con link a Maps si hay URL o coords
+   Prioridad de la URL:
+     1. tourMeta.meetingPointUrl   (link exacto de GuruWalk)
+     2. geo.lat/lng                (coordenadas)
+     3. place                      (texto de dirección)
+   ============================================================ */
+function renderPlaceLine(e) {
+  const placeText = (e.place || '').trim();
+  const hasGeo = typeof e.geo?.lat === 'number' && typeof e.geo?.lng === 'number';
+  const hasMapsUrl = !!e.tourMeta?.meetingPointUrl;
+
+  // Sin lugar ni coords ni URL → no renderiza nada
+  if (!placeText && !hasGeo && !hasMapsUrl) return '';
+
+  // Texto a mostrar: preferimos place; si no hay, "Punto de encuentro"
+  const label = escapeHtml(placeText || (hasGeo ? 'Punto de encuentro' : 'Ver en el mapa'));
+
+  const url = getMapsUrl(e);
+
+  // Sin URL utilizable → sólo texto plano
+  if (!url) {
+    return `<p class="tl__place"><svg><use href="#i-pin"/></svg>${label}</p>`;
+  }
+
+  return `
+    <p class="tl__place">
+      <a href="${url}" target="_blank" rel="noopener"
+         class="tl__place-link"
+         data-maps-link>
+        <svg><use href="#i-pin"/></svg>${label}<svg class="tl__place-external"><use href="#i-nav-external"/></svg>
+      </a>
+    </p>`;
+}
+
+/* ============================================================
+   Limpiar hechos
+   ============================================================ */
 async function clearDone() {
   const done = ctx.events.filter(e => e.done);
   if (!done.length) { bus.toast('No hay eventos hechos'); return; }
   if (!confirm(`¿Eliminar ${done.length} evento(s) ya realizados?`)) return;
-  for (const e of done) await call('deleteEvent', e.id, { silent: true });
+
+  for (const e of done) {
+    await call('deleteEvent', e.id, { silent: true });
+  }
   bus.toast('Eventos limpiados');
 }

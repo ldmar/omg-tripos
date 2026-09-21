@@ -3691,3 +3691,74 @@ body.daymode-on .app {
 }
 .ft-detail__actions .btn { width: 100%; }
 
+/* ============================================================
+   Maps link · timeline + modal
+   ============================================================ */
+
+/* Link dentro del timeline */
+.tl__place a.tl__place-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color .15s ease;
+}
+.tl__place a.tl__place-link:hover {
+  color: var(--accent-text);
+}
+.tl__place-external {
+  width: 10px !important;
+  height: 10px !important;
+  opacity: .55;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+.tl__place a.tl__place-link:hover .tl__place-external {
+  opacity: 1;
+  color: var(--accent-text);
+}
+
+/* Botón Maps en el modal de evento */
+.form__maps {
+  margin-top: 6px;
+}
+.form__maps[hidden] { display: none; }
+
+.form__maps-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--c-activity) 8%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--c-activity) 30%, var(--border));
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .15s ease;
+}
+.form__maps-btn:hover {
+  background: color-mix(in srgb, var(--c-activity) 14%, var(--surface-2));
+  border-color: var(--c-activity);
+}
+.form__maps-btn:active { transform: scale(.99); }
+.form__maps-btn > svg:first-child {
+  width: 16px;
+  height: 16px;
+  color: var(--c-activity);
+  flex-shrink: 0;
+}
+.form__maps-arrow {
+  width: 14px;
+  height: 14px;
+  opacity: .55;
+  margin-left: auto;
+  color: var(--text-2);
+}
+.form__maps-btn:hover .form__maps-arrow {
+  opacity: 1;
+  color: var(--c-activity);
+}
+

@@ -69,6 +69,8 @@
 <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></symbol>
 <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
 <symbol id="i-walk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="m9 22 3-7 3 7"/><path d="M6.5 12 12 10l5.5 2"/><path d="M9 15h6"/></symbol>
+<symbol id="i-nav-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></symbol>
+
 </svg>
 
 <div class="banner banner--offline" id="offlineBanner" hidden>
@@ -396,6 +398,14 @@
 
       <label class="form__label" for="fPlace">Lugar</label>
       <input class="form__input" id="fPlace" placeholder="Gran Vía 1" autocomplete="off" />
+
+      <div class="form__maps" id="fMapsRow" hidden>
+        <a class="form__maps-btn" id="fMapsBtn" href="#" target="_blank" rel="noopener">
+          <svg><use href="#i-pin"/></svg>
+          <span>Ver punto de encuentro en Maps</span>
+          <svg class="form__maps-arrow"><use href="#i-nav-external"/></svg>
+        </a>
+      </div>
 
       <label class="form__label" for="fNotes">Notas</label>
       <textarea class="form__input form__input--area" id="fNotes" rows="2" placeholder="Ref. BK-8827341 · Doble x2"></textarea>

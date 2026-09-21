@@ -1,9 +1,9 @@
 /* ============================================================
    OhMyGoch Trip OS · Service Worker
-   v3.0.4 · network-first crítico + cache-first assets + SWR remoto
+   v3.0.5 · network-first crítico + cache-first assets + SWR remoto
    ============================================================ */
 
-const VERSION = 'OMGTripOS-v3.0.5';
+const VERSION = 'OMGTripOS-v3.0.6';
 const CORE    = 'core-' + VERSION;
 const RUNTIME = 'runtime-' + VERSION;
 

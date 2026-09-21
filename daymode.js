@@ -1,6 +1,7 @@
 /* ============================================================
    OhMyGoch Trip OS · daymode.js
    Modo Día Activo · pantalla enfocada + wake lock
+   - "Ir" usa geo.lat/lng si existe (fix), o meetingPointUrl, o place
    ============================================================ */
 
 let wakeLock = null;
@@ -16,7 +17,9 @@ export function isDayModeActive() { return isActive; }
 export function setEventProvider(fn) { getEventsFn = fn; }
 export function setOnEventDone(fn) { onEventDoneFn = fn; }
 
-/* ---------- Enter / Exit ---------- */
+/* ============================================================
+   Enter / Exit
+   ============================================================ */
 export async function enterDayMode() {
   if (isActive) return;
   isActive = true;
@@ -55,7 +58,9 @@ export function refresh() {
   if (isActive) render();
 }
 
-/* ---------- Wake Lock ---------- */
+/* ============================================================
+   Wake Lock
+   ============================================================ */
 async function requestWakeLock() {
   try {
     if (!('wakeLock' in navigator)) return;
@@ -78,14 +83,16 @@ async function handleVisibilityChange() {
   }
 }
 
-/* ---------- Reloj ---------- */
+/* ============================================================
+   Reloj
+   ============================================================ */
 function updateClock() {
   const now = new Date();
   const time = now.toLocaleTimeString('es-AR', {
-    hour: '2-digit', minute: '2-digit', hour12: false
+    hour: '2-digit', minute: '2-digit', hour12: false,
   });
   const date = now.toLocaleDateString('es-AR', {
-    weekday: 'long', day: 'numeric', month: 'long'
+    weekday: 'long', day: 'numeric', month: 'long',
   });
   const clockEl = $('daymodeClock');
   const dateEl = $('daymodeDate');
@@ -94,7 +101,9 @@ function updateClock() {
   updateCountdown();
 }
 
-/* ---------- Evento actual ---------- */
+/* ============================================================
+   Evento actual
+   ============================================================ */
 function getCurrentEvent() {
   if (!getEventsFn) return null;
   const events = getEventsFn();
@@ -110,7 +119,9 @@ function getCurrentEvent() {
     .sort((a, b) => new Date(a.startAt) - new Date(b.startAt))[0] || null;
 }
 
-/* ---------- Render principal ---------- */
+/* ============================================================
+   Render principal
+   ============================================================ */
 function render() {
   const ev = getCurrentEvent();
   currentEventId = ev?.id || null;
@@ -154,7 +165,9 @@ function render() {
   renderUpcoming();
 }
 
-/* ---------- Countdown ---------- */
+/* ============================================================
+   Countdown
+   ============================================================ */
 function updateCountdown() {
   if (!isActive) return;
   const ev = getCurrentEvent();
@@ -197,7 +210,9 @@ function updateCountdown() {
 
 function renderCountdown() { updateCountdown(); }
 
-/* ---------- Upcoming ---------- */
+/* ============================================================
+   Upcoming
+   ============================================================ */
 function renderUpcoming() {
   const list = $('daymodeUpcoming');
   if (!list || !getEventsFn) return;
@@ -219,14 +234,13 @@ function renderUpcoming() {
   list.innerHTML = upcoming.map(e => {
     const t = new Date(e.startAt);
     const time = t.toLocaleTimeString('es-AR', {
-      hour: '2-digit', minute: '2-digit', hour12: false
+      hour: '2-digit', minute: '2-digit', hour12: false,
     });
     return `
       <li class="daymode__upcoming-item" data-id="${e.id}">
         <span class="daymode__upcoming-time">${time}</span>
         <span class="daymode__upcoming-title">${escapeHtml(e.title)}</span>
-      </li>
-    `;
+      </li>`;
   }).join('');
 
   list.querySelectorAll('[data-id]').forEach(el => {
@@ -237,7 +251,9 @@ function renderUpcoming() {
   });
 }
 
-/* ---------- Acciones ---------- */
+/* ============================================================
+   Acciones
+   ============================================================ */
 export async function actionDone() {
   const ev = getCurrentEvent();
   if (!ev) return;
@@ -262,13 +278,28 @@ export function actionSkip() {
   }
 }
 
+/* ============================================================
+   Navegar al evento
+   Prioridad:
+     1. geo.lat/lng                (coordenadas exactas)
+     2. tourMeta.meetingPointUrl   (link de GuruWalk)
+     3. place                      (texto)
+   ============================================================ */
 export async function actionNavigate() {
   const ev = getCurrentEvent();
   if (!ev) return { ok: false, reason: 'sin-evento' };
 
-  const query = ev.location?.lat && ev.location?.lng
-    ? `${ev.location.lat},${ev.location.lng}`
-    : ev.place;
+  // 1. Coordenadas exactas
+  const hasGeo = typeof ev.geo?.lat === 'number' && typeof ev.geo?.lng === 'number';
+  const query = hasGeo
+    ? `${ev.geo.lat},${ev.geo.lng}`
+    : (ev.place || '').trim();
+
+  // 2. Fallback a URL de GuruWalk si no hay nada mejor
+  if (!query && ev.tourMeta?.meetingPointUrl) {
+    window.open(ev.tourMeta.meetingPointUrl, '_blank', 'noopener');
+    return { ok: true, via: 'guruwalk-url' };
+  }
 
   if (!query) return { ok: false, reason: 'sin-ubicacion' };
 
@@ -283,11 +314,9 @@ export async function actionNavigate() {
       ? `maps://?q=${encoded}`
       : `geo:0,0?q=${encoded}`;
 
-    // Abrir la app nativa. Si no responde en 1.5s, caer al navegador.
     const fallback = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
 
     try {
-      // Truco: usar un iframe invisible para intentar la app sin salir de la página
       const start = Date.now();
       window.location.href = nativeUrl;
 
@@ -300,7 +329,6 @@ export async function actionNavigate() {
 
       return { ok: true, native: true };
     } catch {
-      // fallback
       window.open(fallback, '_blank', 'noopener');
       return { ok: true, fallback: true };
     }
@@ -312,9 +340,11 @@ export async function actionNavigate() {
   return { ok: true, desktop: true };
 }
 
-/* ---------- Utils ---------- */
+/* ============================================================
+   Utils
+   ============================================================ */
 function escapeHtml(s = '') {
   return String(s).replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 }

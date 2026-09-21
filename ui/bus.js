@@ -161,3 +161,24 @@ export const EMOJIS = [
   '🇨🇳','🇰🇷','🇹🇭','🇮🇳','🇦🇺','🇳🇿','🇿🇦','🇪🇬',
   '🇲🇦','🇹🇷','🇬🇷','🇨🇦','🇳🇱','🇧🇪','🇨🇭','🇦🇹',
 ];
+
+/* ============================================================
+   Maps · URL canónica para un evento
+   Prioridad:
+     1. tourMeta.meetingPointUrl  (link exacto de GuruWalk)
+     2. geo.lat/lng               (coordenadas)
+     3. place                     (texto de dirección)
+   Devuelve null si no hay nada útil.
+   ============================================================ */
+export function getMapsUrl(ev) {
+  if (!ev) return null;
+  if (ev.tourMeta?.meetingPointUrl) return ev.tourMeta.meetingPointUrl;
+  if (typeof ev.geo?.lat === 'number' && typeof ev.geo?.lng === 'number') {
+    return `https://www.google.com/maps/search/?api=1&query=${ev.geo.lat},${ev.geo.lng}`;
+  }
+  const place = (ev.place || '').trim();
+  if (place && !place.includes('[object') && !place.startsWith('http')) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+  }
+  return null;
+}
