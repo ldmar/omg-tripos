@@ -666,7 +666,7 @@ document.addEventListener('visibilitychange', () => {
    BOOT
    ============================================================ */
 (async function boot() {
-  applyStandaloneClass();
+  //applyStandaloneClass();
 
   // Init módulos de UI (wiring DOM, una sola vez)
   uiToday.init();
