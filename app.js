@@ -630,19 +630,39 @@ const offlineBanner = document.getElementById('offlineBanner');
 let isConfirmedOffline = false;
 let checkInFlight = false;
 
+// ✅ Estado inicial: banner oculto, dataset consistente
+(function initOfflineBanner() {
+  if (offlineBanner) {
+    offlineBanner.hidden = true;
+    offlineBanner.style.display = 'none';
+  }
+  document.documentElement.dataset.online = '1';
+})();
+
 async function pingSelf() {
   try {
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch('./index.html?_=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+    const timeout = setTimeout(() => ctrl.abort(), 6000);
+    const res = await fetch('./offline.html', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: ctrl.signal,
+    });
     clearTimeout(timeout);
-    return res.ok;
-  } catch { return false; }
+    return res.ok || res.status === 304;
+  } catch (err) {
+    console.warn('[ping] falló:', err.message);
+    return false;
+  }
 }
+
 function setOffline(offline) {
-  if (offline === isConfirmedOffline) return;
+  // ✅ Sin early return — siempre sincronizamos el DOM con el estado
   isConfirmedOffline = offline;
-  if (offlineBanner) offlineBanner.hidden = !offline;
+  if (offlineBanner) {
+    offlineBanner.hidden = !offline;
+    offlineBanner.style.display = offline ? '' : 'none';
+  }
   document.documentElement.dataset.online = offline ? '0' : '1';
 }
 async function checkConnectivity() {
