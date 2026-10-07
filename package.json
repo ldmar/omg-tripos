@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test":         "vitest run",
-    "test:watch":   "vitest",
-    "test:ui":      "vitest --ui",
-    "serve":        "serve -p 3002 .",
-    "icons":        "node scripts/generate-icons.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "serve": "serve -p 3002 .",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "devDependencies": {
-    "vitest":    "^2.1.9",
-    "serve":     "^14.2.4",
-    "sharp":     "^0.33.5"
+    "fake-indexeddb": "^6.2.5",
+    "serve": "^14.2.4",
+    "sharp": "^0.33.5",
+    "vitest": "^2.1.9"
   }
 }

@@ -44,7 +44,15 @@ function db() {
       // v1 → v2: no schema break, sólo nuevos campos opcionales.
       // Los registros viejos tienen `blob` plano y `encrypted` undefined.
     };
-    req.onsuccess = () => resolve(req.result);
+     req.onsuccess = () => {
+      const idb = req.result;
+      idb.onversionchange = () => {
+        console.log('[wallet] versionchange · cerrando conexión');
+        idb.close();
+        _db = null;
+      };
+      resolve(idb);
+    };
     req.onerror   = () => reject(req.error);
   });
   return _db;
