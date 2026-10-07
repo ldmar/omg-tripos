@@ -324,12 +324,24 @@
       </div>
 
       <div class="people" id="travelersList"></div>
-        <div class="section-head"><h3>Gastos compartidos</h3><span class="tag tag--warn">Te deben €48</span></div>
-        <ul class="expenses">
-          <li><div class="expense__ico">🏨</div><div class="expense__body"><strong>Hotel Gran Vía</strong><small>Pagó Ana · dividido 4</small></div><div class="expense__amt">€620</div></li>
-          <li><div class="expense__ico">🍽</div><div class="expense__body"><strong>Mercado San Miguel</strong><small>Pagó Vos · dividido 4</small></div><div class="expense__amt">€72</div></li>
-          <li><div class="expense__ico">🚇</div><div class="expense__body"><strong>Metro turístico 10 viajes</strong><small>Pagó Lucas · dividido 4</small></div><div class="expense__amt">€28</div></li>
-        </ul>
+        <div class="section-head">
+          <h3>Gastos compartidos</h3>
+          <button type="button" class="ghostbtn" id="expensesAddBtn">+ Agregar</button>
+        </div>
+
+        <div class="expenses-empty" id="expensesEmpty" hidden>
+          <div class="empty__icon">💸</div>
+          <p>Sin gastos todavía. Agregá el primero para llevar la cuenta del grupo.</p>
+        </div>
+
+        <div class="expenses-balance" id="expensesBalance"></div>
+
+        <div class="expenses-settle" id="expensesSettlements" hidden>
+          <p class="expenses-settle__label">Cómo saldar</p>
+          <ul class="expenses-settle__list" id="expensesSettlementsList"></ul>
+        </div>
+
+        <div class="expenses-list" id="expensesList"></div>
  <div class="section-head">
   <h3>Chat del grupo</h3>
   <span class="tag" id="chatCount">—</span>

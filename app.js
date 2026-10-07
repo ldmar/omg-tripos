@@ -11,6 +11,7 @@ import * as uiMgmt from './ui/management.js';
 import * as uiChat from './ui/chat.js';
 import * as uiMap from './ui/map.js';
 import * as uiFreetour from './ui/freetour.js';
+import * as uiExpenses from './ui/expenses.js';
 
 import * as trips from './trips.js';
 import * as sync from './sync.js';
@@ -22,6 +23,7 @@ import * as notif from './notifications.js';
 import * as alerts from './alerts.js';
 import * as daymode from './daymode.js';
 import * as settings from './settings.js';
+
 
 import { analyzeMulti } from './parser.js';
 import { extractTextFromPdf, isPdfFile, fmtBytes } from './pdf-import.js';
@@ -49,6 +51,7 @@ async function renderAll() {
   await uiWallet.render();
   uiMgmt.render();
   await uiChat.render();
+  await uiExpenses.render();
 }
 
 /* ============================================================
@@ -697,6 +700,7 @@ document.addEventListener('visibilitychange', () => {
   uiChat.init();
   uiMap.init();
   uiFreetour.init();
+  uiExpenses.init(); 
 
   await bootLock();
   settings.loadAutoLock();

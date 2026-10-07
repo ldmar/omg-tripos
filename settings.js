@@ -8,6 +8,7 @@ import * as crypto  from './crypto.js';
 import * as trips   from './trips.js';
 import * as wallet  from './wallet.js';
 import * as chat    from './chat.js';
+import * as expenses from './expenses.js';
 
 const AUTOLOCK_KEY = 'ohmygoch_autolock_ms';
 const LAST_BACKUP_KEY = 'ohmygoch_last_backup_at';
@@ -236,6 +237,7 @@ export async function wipeTrip(tripId) {
   // 2. Borrar todo lo que dependía de esa clave
   await trips.deleteTrip(tripId);
   await chat.wipeTripMessages(tripId);
+  await expenses.wipeTripExpenses(tripId);
   // Wallet ya lo limpia trips.deleteTrip (vía deleteTripFiles)
 }
 
