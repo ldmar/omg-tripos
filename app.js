@@ -12,6 +12,7 @@ import * as uiChat from './ui/chat.js';
 import * as uiMap from './ui/map.js';
 import * as uiFreetour from './ui/freetour.js';
 import * as uiExpenses from './ui/expenses.js';
+import * as uiExpenseModal from './ui/expense-modal.js';
 
 import * as trips from './trips.js';
 import * as sync from './sync.js';
@@ -90,6 +91,7 @@ async function toggleDone(id) {
   toast(e.done ? '✓ Marcado como hecho' : 'Marcado como pendiente');
 }
 
+register('openExpenseModal', (id) => uiExpenseModal.open(id));
 register('saveEvent', saveEvent);
 register('deleteEvent', deleteEvent);
 register('toggleDone', toggleDone);
@@ -111,6 +113,12 @@ function setView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('is-active', v.dataset.view === name));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
   document.getElementById('viewport')?.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // FAB sólo en "Hoy" (agrega evento). Mapa podría también, pero mejor
+  // mantenerlo enfocado: en Mapa no tiene contexto de "cuándo".
+  const fab = document.getElementById('fab');
+  if (fab) fab.hidden = (name !== 'today');
+
   if (name === 'wallet') uiWallet.render();
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setView(t.dataset.tab)));
@@ -701,6 +709,7 @@ document.addEventListener('visibilitychange', () => {
   uiMap.init();
   uiFreetour.init();
   uiExpenses.init(); 
+  uiExpenseModal.init();
 
   await bootLock();
   settings.loadAutoLock();
