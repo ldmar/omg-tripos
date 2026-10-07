@@ -4,6 +4,12 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Regla universal: [hidden] siempre gana sobre display: xxx */
+[hidden] {
+  display: none !important;
+}
+
+
 :root {
   --bg:        #fbf8f3;
   --surface:   #ffffff;

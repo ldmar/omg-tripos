@@ -3,7 +3,7 @@
    v3.0.5 · network-first crítico + cache-first assets + SWR remoto
    ============================================================ */
 
-const VERSION = 'OMGTripOS-v3.0.6';
+const VERSION = 'OMGTripOS-v3.1.0';
 const CORE    = 'core-' + VERSION;
 const RUNTIME = 'runtime-' + VERSION;
 

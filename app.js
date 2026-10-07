@@ -507,70 +507,121 @@ async function registerSW() {
 }
 
 /* ============================================================
-   PWA · Install
+   PWA · Install (v2 · corregido)
    ============================================================ */
 let deferredPrompt = null;
-let INSTALL_BANNER_KILLED = false;
 
-function isPWAInstalled() {
+const INSTALL_KEY = 'ohmygoch_installed';
+const DISMISSED_KEY = 'ohmygoch_install_dismissed';
+
+// ✅ Detección REAL de instalación — sin falsos positivos
+function isReallyInstalled() {
   try {
-    if (localStorage.getItem('ohmygoch_installed') === '1') return true;
-    if (window.matchMedia('(display-mode: standalone)').matches) return true;
-    if (window.navigator.standalone === true) return true;
-    if (document.referrer?.startsWith('android-app://')) return true;
+    if (matchMedia('(display-mode: standalone)').matches) return true;
+    if (matchMedia('(display-mode: fullscreen)').matches) return true;
+    if (matchMedia('(display-mode: minimal-ui)').matches) return true;
+    if (navigator.standalone === true) return true;               // iOS Safari
+    if (localStorage.getItem(INSTALL_KEY) === '1') return true;   // flag persistido
+    // NO usamos document.referrer — demasiado amplio en Android
     return false;
   } catch { return false; }
 }
-function markInstalled() {
-  localStorage.setItem('ohmygoch_installed', '1');
-  INSTALL_BANNER_KILLED = true;
-  document.getElementById('installBanner').hidden = true;
-  document.body.classList.add('is-standalone');
-}
-function killInstallBanner() {
-  INSTALL_BANNER_KILLED = true;
-  document.getElementById('installBanner').hidden = true;
-  deferredPrompt = null;
-}
-function applyStandaloneClass() {
-  const on = isPWAInstalled();
-  document.body.classList.toggle('is-standalone', on);
-  if (on) markInstalled();
-  return on;
-}
-if (isPWAInstalled()) markInstalled();
-if (localStorage.getItem('ohmygoch_install_dismissed') === '1') INSTALL_BANNER_KILLED = true;
 
-window.addEventListener('beforeinstallprompt', e => {
+function hideInstallBanner() {
+  const el = document.getElementById('installBanner');
+  if (!el) return;
+  el.hidden = true;
+  el.style.display = 'none';   // ✅ vence cualquier display del CSS
+}
+
+function showInstallBanner() {
+  const el = document.getElementById('installBanner');
+  if (!el) return;
+  el.hidden = false;
+  el.style.display = '';       // ✅ restaura lo que diga el CSS
+}
+
+// Estado inicial
+if (isReallyInstalled()) {
+  document.body.classList.add('is-standalone');
+  hideInstallBanner();
+}
+if (localStorage.getItem(DISMISSED_KEY) === '1') hideInstallBanner();
+
+// beforeinstallprompt — SIEMPRE sobreescribir el deferredPrompt
+window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  if (INSTALL_BANNER_KILLED || isPWAInstalled()) { if (isPWAInstalled()) markInstalled(); return; }
-  deferredPrompt = e;
-  document.getElementById('installBanner').hidden = false;
+  deferredPrompt = e;   // ✅ sobreescribir, no "if (!deferredPrompt)"
+  console.log('[BIP] fired', { platforms: e.platforms, deferredPrompt: !!deferredPrompt });
+
+  if (isReallyInstalled()) { hideInstallBanner(); return; }
+  if (localStorage.getItem(DISMISSED_KEY) === '1') return;
+
+  showInstallBanner();
 });
 
+// Botón "Instalar"
 document.getElementById('installBtn')?.addEventListener('click', async () => {
-  if (INSTALL_BANNER_KILLED) return;
-  if (isPWAInstalled()) { markInstalled(); return; }
-  if (!deferredPrompt) { alert('📲 Menú ⋮ → Instalar aplicación'); return; }
+  console.log('[install] click · deferredPrompt?', !!deferredPrompt);
+
+  if (isReallyInstalled()) {
+    hideInstallBanner();
+    toast('Ya está instalada');
+    return;
+  }
+
+  if (!deferredPrompt) {
+    // Fallback claro, sin alert() bloqueante
+    toast('📲 Menú ⋮ de Chrome → "Instalar aplicación"');
+    return;
+  }
+
   try {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') { markInstalled(); toast('¡Instalada! 🎉'); }
-    else { killInstallBanner(); toast('Instalación cancelada'); }
-  } catch { killInstallBanner(); }
+    console.log('[install] outcome:', outcome);
+
+    if (outcome === 'accepted') {
+      localStorage.setItem(INSTALL_KEY, '1');
+      document.body.classList.add('is-standalone');
+      hideInstallBanner();
+      toast('¡Instalada! 🎉');
+    } else {
+      // ✅ NO matamos el banner — el user puede reintentar
+      toast('Podés instalarla después');
+    }
+  } catch (err) {
+    console.warn('[install] error:', err);
+    hideInstallBanner();
+  }
+
+  // ✅ El evento es single-use — se limpia siempre, pero el banner puede volver
+  //    si Chrome dispara un nuevo beforeinstallprompt
   deferredPrompt = null;
 });
+
+// "Ya la instalé" — marca persistente y silencia
 document.getElementById('installAlreadyBtn')?.addEventListener('click', () => {
-  localStorage.setItem('ohmygoch_installed', '1');
-  killInstallBanner();
+  localStorage.setItem(INSTALL_KEY, '1');
   document.body.classList.add('is-standalone');
+  hideInstallBanner();
   toast('✓ Banner silenciado');
 });
+
+// X (cerrar) — solo para esta sesión (no localStorage)
 document.getElementById('installClose')?.addEventListener('click', () => {
-  localStorage.setItem('ohmygoch_install_dismissed', '1');
-  killInstallBanner();
+  hideInstallBanner();
+  // No persistimos — si vuelve a abrir, si BIP dispara, puede reaparecer
 });
-window.addEventListener('appinstalled', () => { markInstalled(); toast('OhMyGoch instalada'); });
+
+// Instalación exitosa confirmada por el browser
+window.addEventListener('appinstalled', () => {
+  console.log('[install] appinstalled ✓');
+  localStorage.setItem(INSTALL_KEY, '1');
+  document.body.classList.add('is-standalone');
+  hideInstallBanner();
+  toast('OhMyGoch instalada ✓');
+});
 
 /* ============================================================
    PWA · Online/Offline
@@ -579,19 +630,39 @@ const offlineBanner = document.getElementById('offlineBanner');
 let isConfirmedOffline = false;
 let checkInFlight = false;
 
+// ✅ Estado inicial: banner oculto, dataset consistente
+(function initOfflineBanner() {
+  if (offlineBanner) {
+    offlineBanner.hidden = true;
+    offlineBanner.style.display = 'none';
+  }
+  document.documentElement.dataset.online = '1';
+})();
+
 async function pingSelf() {
   try {
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch('./index.html?_=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+    const timeout = setTimeout(() => ctrl.abort(), 6000);
+    const res = await fetch('./offline.html', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: ctrl.signal,
+    });
     clearTimeout(timeout);
-    return res.ok;
-  } catch { return false; }
+    return res.ok || res.status === 304;
+  } catch (err) {
+    console.warn('[ping] falló:', err.message);
+    return false;
+  }
 }
+
 function setOffline(offline) {
-  if (offline === isConfirmedOffline) return;
+  // ✅ Sin early return — siempre sincronizamos el DOM con el estado
   isConfirmedOffline = offline;
-  if (offlineBanner) offlineBanner.hidden = !offline;
+  if (offlineBanner) {
+    offlineBanner.hidden = !offline;
+    offlineBanner.style.display = offline ? '' : 'none';
+  }
   document.documentElement.dataset.online = offline ? '0' : '1';
 }
 async function checkConnectivity() {
@@ -615,7 +686,7 @@ document.addEventListener('visibilitychange', () => {
    BOOT
    ============================================================ */
 (async function boot() {
-  applyStandaloneClass();
+  //applyStandaloneClass();
 
   // Init módulos de UI (wiring DOM, una sola vez)
   uiToday.init();
