@@ -99,7 +99,17 @@ export function fmtTime(iso) {
 }
 
 export function fmtDateShort(iso) {
-  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+  if (!iso) return '';
+  let d;
+  // Si viene como "YYYY-MM-DD" (sin hora), parsearlo como fecha LOCAL,
+  // no UTC. Si no, Argentina (UTC-3) muestra el día anterior.
+  if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, day] = iso.split('-').map(Number);
+    d = new Date(y, m - 1, day);
+  } else {
+    d = new Date(iso);
+  }
+  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
 export function relTime(iso) {

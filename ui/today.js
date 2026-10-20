@@ -41,8 +41,19 @@ export function render() {
 function computeDayNumber() {
   const trip = ctx.trip;
   if (!trip?.startDate) return null;
-  const start = new Date(trip.startDate);
+
+  let start;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trip.startDate)) {
+    const [y, m, d] = trip.startDate.split('-').map(Number);
+    start = new Date(y, m - 1, d);
+  } else {
+    start = new Date(trip.startDate);
+  }
+  start.setHours(0, 0, 0, 0);
+
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
   const diff = Math.floor((now - start) / 86400000) + 1;
   if (diff < 1 || (trip.days && diff > trip.days)) return null;
   return diff;
