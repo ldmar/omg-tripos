@@ -25,17 +25,12 @@ export function init() {
 
 function openAddExpense() {
   if (!ctx.trip?.id) { toast('Sin viaje activo'); return; }
-  if (!bus.ctx.openExpenseModal) {
-    toast('Próximamente: modal de gastos');
-    return;
-  }
   call('openExpenseModal');
 }
 
 function onExpenseClick(e) {
   const card = e.target.closest('[data-expense-id]');
   if (!card) return;
-  if (!bus.ctx.openExpenseModal) return;
   call('openExpenseModal', card.dataset.expenseId);
 }
 

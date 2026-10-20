@@ -1261,8 +1261,94 @@ Check-in: 5 de octubre de 2026.'"
     </div>
   </div>
 </div>
+<!-- ============================================================
+     MODAL · Gasto
+     ============================================================ -->
+<div class="modal" id="expenseModal" inert hidden aria-hidden="true">
+  <div class="modal__backdrop" data-expense-close></div>
+  <div class="modal__sheet" role="dialog" aria-modal="true" aria-labelledby="expenseTitle">
+    <div class="modal__handle"></div>
+
+    <header class="modal__head">
+      <h3 id="expenseTitle">Nuevo gasto</h3>
+      <button class="iconbtn iconbtn--s" data-expense-close aria-label="Cerrar">
+        <svg><use href="#i-x"/></svg>
+      </button>
+    </header>
+
+    <form class="form" id="expenseForm">
+      <input type="hidden" id="exId" />
+
+      <label class="form__label" for="exTitle">Título</label>
+      <input class="form__input" id="exTitle" required placeholder="Cena en el centro"
+             autocomplete="off" maxlength="80" />
+
+      <div class="form__grid">
+        <div>
+          <label class="form__label" for="exAmount">Monto</label>
+          <input class="form__input" id="exAmount" type="number" inputmode="decimal"
+                 min="0.01" step="0.01" required placeholder="0.00" />
+        </div>
+        <div>
+          <label class="form__label" for="exCurrency">Moneda</label>
+          <select class="form__input" id="exCurrency">
+            <option value="EUR">€ EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="ARS">$ ARS</option>
+            <option value="BRL">R$ BRL</option>
+            <option value="MXN">$ MXN</option>
+            <option value="GBP">£ GBP</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="form__label">Categoría</label>
+      <div class="chips" id="exCategoryChips"></div>
+
+      <label class="form__label" for="exPaidBy">Pagó</label>
+      <select class="form__input" id="exPaidBy" required></select>
+
+      <label class="form__label">División</label>
+      <div class="chips" id="exSplitChips">
+        <button type="button" class="chip" data-split="equal">
+          <span>⚖️</span><span>Partes iguales</span>
+        </button>
+        <button type="button" class="chip" data-split="custom">
+          <span>🎯</span><span>Montos custom</span>
+        </button>
+      </div>
+
+      <div id="exSplitEqual" class="ex-split-section">
+        <p class="ex-split-hint">Se divide entre los viajeros seleccionados:</p>
+        <div class="ex-split-people" id="exSplitPeople"></div>
+      </div>
+
+      <div id="exSplitCustom" class="ex-split-section" hidden>
+        <p class="ex-split-hint">
+          Asigná el monto exacto para cada viajero.
+          Total: <strong id="exSplitRemaining">—</strong>
+        </p>
+        <div class="ex-split-people" id="exSplitCustomPeople"></div>
+      </div>
+
+      <label class="form__label" for="exNotes">Notas <small>(opcional)</small></label>
+      <textarea class="form__input form__input--area" id="exNotes" rows="2"
+                placeholder="Ej: incluye propina"></textarea>
+
+      <p class="lockscreen__error" id="exError" hidden></p>
+
+      <div class="form__actions">
+        <button type="button" class="btn btn--danger" id="exDeleteBtn" hidden>
+          <svg><use href="#i-trash"/></svg><span>Eliminar</span>
+        </button>
+        <button type="submit" class="btn btn--primary" id="exSaveBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <div class="toast" id="toast" hidden></div>
+
 
 <script type="module" src="app.js"></script>
 </body>
