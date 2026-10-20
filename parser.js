@@ -33,8 +33,8 @@ export function parseDate(str, refYear) {
     return new Date(y, +m[2] - 1, +m[1]);
   }
 
-  // "5 de octubre de 2026" · "5 octubre 2026" · "5 de octubre"
-  m = s.match(/(\d{1,2})\s*(?:de\s+)?([a-záéíóúñ]+)(?:\s*(?:de\s+|,\s*)?(\d{4}))?/);
+  // "5 de octubre de 2026" · "5 octubre 2026" · "25 ene. 2027" (con punto)
+  m = s.match(/(\d{1,2})\s*(?:de\s+)?([a-záéíóúñ]+)\.?(?:\s*(?:de\s+|,\s*)?(\d{4}))?/);
   if (m && MONTHS[m[2]] !== undefined) {
     return new Date(m[3] ? +m[3] : year, MONTHS[m[2]], +m[1]);
   }
@@ -214,60 +214,85 @@ function parseFlight(text) {
   const events = [];
   const warnings = [];
 
-  const flightNum = pick(text, [
-    /(?:Vuelo|Flight)[:\s#]*([A-Z]{2}\s?\d{2,4})/i,
-    /\b([A-Z]{2}\s?\d{2,4})\b/
+  // Extraer número de reserva
+  const code = pick(text, [
+    /(?:Nº de reserva|Número de reserva|Reserva|Confirmaci[oó]n|PNR|Booking ref|C[oó]digo)[:\s#]*([A-Z0-9]{5,20})/i,
+    /(?:Tu número de reserva es)[:\s#]*([A-Z0-9]{5,20})/i
   ]);
-  const flightNumClean = flightNum ? flightNum.replace(/\s/g, '') : null;
 
-  // Ruta: BCN → MAD, BCN-MAD, o (BCN) ... (MAD)
-  let origin = pick(text, [/\b([A-Z]{3})\s*(?:→|->|–|—|-|a|to)\s*[A-Z]{3}\b/]);
-  let destination = pick(text, [/\b[A-Z]{3}\s*(?:→|->|–|—|-|a|to)\s*([A-Z]{3})\b/]);
-  if (!origin || !destination) {
-    const codes = [...text.matchAll(/\(([A-Z]{3})\)/g)].map(x => x[1]);
-    if (codes.length >= 2) { origin = codes[0]; destination = codes[1]; }
+  // Detectar si es ida y vuelta (formato Despegar)
+  const isRoundTrip = /Ida/i.test(text) && /Vuelta/i.test(text);
+  let segments = [];
+
+  if (isRoundTrip) {
+      const parts = text.split(/Vuelta/i);
+      if (parts.length >= 2) {
+          segments.push({ name: 'Ida', text: parts[0] });
+          segments.push({ name: 'Vuelta', text: parts[1] });
+      }
+  }
+  
+  if (segments.length === 0) {
+      segments.push({ name: '', text });
   }
 
-  const dateRaw = pick(text, [
-    /(?:Fecha|Date)[:\s]+([^\n]{4,60})/i,
-    /(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/i,
-    /(\d{1,2}\s+de\s+[a-záéíóúñ]+)/i,
-    /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/
-  ]);
-  const flightDate = parseDate(dateRaw);
+  for (const seg of segments) {
+      const segText = seg.text;
+      
+      // Ruta (ej: EZE Buenos Aires (AR) ... BRC San Carlos...)
+      let origin = null, destination = null;
+      const airports = [...segText.matchAll(/\b([A-Z]{3})\s+([^\n(]+)\(([A-Z]{2})\)/g)];
+      if (airports.length >= 2) {
+          origin = airports[0][1];
+          destination = airports[1][1];
+      } else {
+          // Fallback: formato estándar "BCN -> MAD"
+          origin = pick(segText, [/\b([A-Z]{3})\s*(?:→|->|–|—|-|a|to)\s*[A-Z]{3}\b/]);
+          destination = pick(segText, [/\b[A-Z]{3}\s*(?:→|->|–|—|-|a|to)\s*([A-Z]{3})\b/]);
+      }
 
-  const departure = pick(text, [/(?:Salida|Departure|Sale)[:\s]*(\d{1,2}:\d{2})/i]);
-  const arrival = pick(text, [/(?:Llegada|Arrival|Llega)[:\s]*(\d{1,2}:\d{2})/i]);
-  const gate = pick(text, [/(?:Puerta|Gate)[:\s]*([A-Z]\d{1,3})/i]);
-  const seat = pick(text, [/(?:Asiento|Seat)[:\s]*(\d{1,2}[A-F])/i]);
-  const code = pick(text, [/(?:Confirmaci[oó]n|Reserva|PNR|Booking ref|C[oó]digo)[:\s]*([A-Z0-9]{5,10})/i]);
+      // Fecha
+      const dateRaw = pick(segText, [
+        /(?:Fecha|Date)[:\s]+([^\n]{4,60})/i,
+        /(\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4})/i,
+        /(\d{1,2}\s+de\s+[a-záéíóúñ]+)/i,
+        /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/,
+        /(\d{1,2}\s+[a-z]{3,}\.?\s+\d{4})/i // "25 ene. 2027"
+      ]);
+      const flightDate = parseDate(dateRaw);
+      
+      // Horarios
+      let depTime = pick(segText, [/(?:Salida|Departure|Sale)[:\s]*(\d{1,2}:\d{2})/i]);
+      let arrTime = pick(segText, [/(?:Llegada|Arrival|Llega)[:\s]*(\d{1,2}:\d{2})/i]);
+      
+      // Fallback: buscar los dos primeros horarios en el texto
+      if (!depTime || !arrTime) {
+          const times = [...segText.matchAll(/\b(\d{1,2}:\d{2})\b/g)].map(m => m[1]);
+          if (times.length >= 2) {
+            depTime = times[0];
+            arrTime = times[1];
+          }
+      }
 
-  if (!flightDate) warnings.push('No pude detectar la fecha del vuelo');
-  if (!origin || !destination) warnings.push('No pude detectar la ruta');
+      if (origin && destination && flightDate) {
+          let title = `Vuelo ${origin} → ${destination}`;
+          if (seg.name) title = `Vuelo ${seg.name} ${origin} → ${destination}`;
+          
+          events.push({
+            type: 'flight',
+            title: title,
+            startAt: toISO(flightDate, depTime || '00:00'),
+            endAt: arrTime ? toISO(flightDate, arrTime) : null,
+            place: `Aeropuerto ${origin}`,
+            notes: code ? `Ref. ${code}` : '',
+            confirmation_code: code,
+            confidence: 0.85
+          });
+      }
+  }
 
-  const title = flightNumClean
-    ? `${flightNumClean} · ${origin || '?'} → ${destination || '?'}`
-    : `Vuelo ${origin || '?'} → ${destination || '?'}`;
-
-  const noteParts = [];
-  if (gate) noteParts.push(`Puerta ${gate}`);
-  if (seat) noteParts.push(`Asiento ${seat}`);
-  if (code) noteParts.push(`Ref. ${code}`);
-
-  if (flightDate && (flightNumClean || origin)) {
-    events.push({
-      type: 'flight',
-      title,
-      startAt: toISO(flightDate, departure || '00:00'),
-      endAt: arrival ? toISO(flightDate, arrival) : null,
-      place: origin ? `Aeropuerto ${origin}` : '',
-      notes: noteParts.join(' · '),
-      confirmation_code: code,
-      confidence: confidence(
-        0.35 + (flightDate ? 0.2 : 0) + (flightNumClean ? 0.15 : 0) +
-        (origin && destination ? 0.15 : 0) + (departure ? 0.1 : 0) + (code ? 0.05 : 0)
-      )
-    });
+  if (events.length === 0) {
+      warnings.push('No pude detectar los vuelos');
   }
 
   return { provider: 'flight', providerName: 'Vuelo', events, warnings };
@@ -414,7 +439,7 @@ export const PROVIDERS = {
               detect: t => /airbnb/i.test(t) || /c[oó]digo de confirmaci[oó]n/i.test(t),
               parse: parseAirbnb },
   flight:   { id: 'flight',   name: 'Vuelo',       emoji: '✈️',
-              detect: t => /(?:Vuelo|Flight|Boarding|PNR)/i.test(t) || /\b[A-Z]{2}\s?\d{2,4}\b/.test(t),
+              detect: t => /(?:Vuelo|Flight|Boarding|PNR|Ida|Vuelta)/i.test(t) || /\b[A-Z]{2}\s?\d{2,4}\b/.test(t) || /\b([A-Z]{3})\s+([^\n(]+)\(([A-Z]{2})\)/.test(t),
               parse: parseFlight },
   car:      { id: 'car',      name: 'Auto',        emoji: '🚗',
               detect: t => /(?:Alquiler|Renta|Rent\s*a\s*car|Car\s*rental|Recogida|Retiro|Hertz|Avis|Europcar|Sixt)/i.test(t),
